@@ -1,120 +1,31 @@
-# jfeelgood.com — Landing Page
+# jfeelgood.com
 
-A responsive, single-file landing page for [JFeelgood](https://jfeelgood.com), an original art brand based in Austin, Texas.
+Static site for JFeelgood — paintings, the Self Work series, books, and limited-edition collectible art cards. Served from this repository (GitHub Pages user site, custom domain jfeelgood.com).
 
----
+## Pages
 
-## Overview
+- `index.html` — single-page gallery: hero (Dreamfall), featured works carousel, story of growth carousel, Collect section (limited-edition cards), archives promo, Self Work carousel, books, about, NOVA 7.
+- `archives.html` — "Archives Wall": masonry grid of 186 paintings (2004–2025), rendered from lazy-loaded WebP thumbnails that click through to full-resolution originals.
+- `llms.txt` — machine-readable summary for AI crawlers. Keep it in sync with the real pages and products.
+- `robots.txt` / `sitemap.xml` — standard crawl config.
 
-This landing page is built as a single self-contained HTML file (`jfeelgood.html`). It uses no build tools, no frameworks, and no external dependencies beyond two Google Fonts families. Drop it on any static host and it works.
+## Assets
 
----
+- `assets/images/` — full-resolution originals (kept as the archive of record; referenced by pages only as click-through targets).
+- `assets/images/opt/` — 1200px-wide WebP derivatives used by index.html, plus `og-jfeelgood.jpg` (social share image).
+- `assets/images/archives/thumbs/` — 700px-wide WebP thumbnails used by the archives grid.
+- `assets/images/cards/` — 640px WebP product shots for the Collect section (sourced from the minicuration repo).
 
-## Structure
+Derivatives are generated with Pillow (resize + WebP). If you add a new painting image, add an optimized copy in the matching derivative folder and reference that from the HTML.
 
-The page follows a conversion-focused narrative flow:
+## Commerce
 
-| Section | Purpose |
-|---|---|
-| **Hero** | Brand introduction, headline, and primary CTA |
-| **Problem** | Why generic art fails — setting up the value proposition |
-| **Solution** | What makes JFeelgood's work different |
-| **Features / Gallery** | Six featured paintings with titles, prices, and dimensions |
-| **Testimonial** | Press quote + full artist bio |
-| **CTA** | Final call to collect / purchase |
+The Collect section sells limited-edition art cards (editions of 50, $23) fulfilled by the sister site minicuration.com:
 
----
+- Buy buttons are Stripe Payment Links (one per design) with `?client_reference_id=jfeelgood` for sales attribution in Stripe.
+- Live availability ("X of 50 claimed") is fetched from `https://minicuration.com/api/stock`; that endpoint allowlists this site's origins for CORS. If the fetch fails, static "Limited edition of 50" text remains.
+- Product data (names, slugs, payment links) must match the minicuration repo (`api/webhook.js` is the canonical map there).
 
-## Tech Stack
+## Styling
 
-- **Pure HTML/CSS/JS** — no frameworks, no npm, no build step
-- **Fonts:** Cormorant Garamond (serif display) + DM Mono (labels/eyebrows) via Google Fonts
-- **Animations:** CSS transitions + IntersectionObserver scroll-reveal
-- **Layout:** CSS Grid throughout; fully responsive at 900px and 560px breakpoints
-
----
-
-## Image Placeholders
-
-All images are currently placeholders. Each placeholder includes descriptive alt text specifying exactly what image belongs there. To replace a placeholder:
-
-1. Find the `<div class="img-placeholder">` inside the relevant section
-2. Replace the entire `<div class="img-placeholder">...</div>` block with:
-   ```html
-   <img src="your-image.jpg" alt="Descriptive alt text" />
-   ```
-3. The parent container already has `overflow: hidden` and sizing — the image will fill it automatically. Add `style="width:100%;height:100%;object-fit:cover;"` to the `<img>` tag for best results.
-
-### Placeholder inventory
-
-| Location | Expected Image |
-|---|---|
-| Hero (right column) | *Poetry of Solace* — figure on glowing path under stars |
-| Problem section | *Adonis* — stylized face, muted tones on yellow background |
-| Solution section | *The Mother Essence* — swirling blues, marbled whites |
-| Gallery card 1 | *Poetry of Solace* |
-| Gallery card 2 | *Veritas* — transparent princess on stage, colorful backdrop |
-| Gallery card 3 | *Path of Privilege* — paintbrushes on gold leaf |
-| Gallery card 4 | *The Mother Essence* |
-| Gallery card 5 | Ascension Series — two-color bold abstracts |
-| Gallery card 6 | Self Work Series — epoxy resin mixed media panels |
-| Testimonial | Photo of JFeelgood by Crystal Pratt, Gallery Off Broadway |
-
----
-
-## Customization
-
-### Colors
-All colors are defined as CSS variables at the top of the `<style>` block:
-
-```css
-:root {
-  --cream:    #f5f0e8;   /* page background */
-  --ink:      #1a1714;   /* text, dark sections */
-  --warm-mid: #7c6e5f;   /* secondary text */
-  --gold:     #c8a96e;   /* accents, eyebrows */
-  --rust:     #a84f2a;   /* CTA section, italic highlights */
-  --pale:     #ede7db;   /* alternate section background */
-}
-```
-
-### Links
-Update these before launch:
-
-- **Gallery links** — `href="#features"` placeholders throughout; replace with actual shop/gallery URLs
-- **Amazon link** — points to `https://www.amazon.com`; replace with the direct *Thought Entropy* product URL
-- **iExploreart link** — `https://iexploreart.com` in the footer
-
-### Painting prices / titles
-Each gallery card in the `#features` section contains a `.painting-card-price` span — update prices, dimensions, and availability status directly in the HTML.
-
----
-
-## Deployment
-
-This is a static file. It can be hosted anywhere:
-
-- **Drag and drop:** Netlify Drop, Vercel, GitHub Pages
-- **FTP/cPanel:** Upload `jfeelgood.html` as `index.html` to the web root
-- **CDN:** Works as-is on any CDN that serves static HTML
-
-No server-side processing required.
-
----
-
-## Browser Support
-
-Works in all modern browsers (Chrome, Firefox, Safari, Edge). The scroll-reveal animations use `IntersectionObserver`, which is supported in all evergreen browsers. No polyfills needed.
-
----
-
-## File Reference
-
-```
-jfeelgood.html    # Complete landing page (single file)
-README.md         # This file
-```
-
----
-
-*All archived paintings are the original creative works of Artist JFeelgood.*
+All CSS is inline in each page's `<style>` block. Fonts: Cormorant Garamond + DM Sans via Google Fonts (linked in `<head>`). Dark palette on index.html (`--accent: #f5b642`), light paper palette on archives.html.
