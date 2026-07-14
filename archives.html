@@ -5,6 +5,27 @@
   <title>Archives Wall – JFeelgood</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="An immersive wall of JFeelgood paintings from the archives – a visual timeline of nearly two decades of work.">
+  <link rel="canonical" href="https://jfeelgood.com/archives.html" />
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://jfeelgood.com/archives.html">
+  <meta property="og:site_name" content="JFeelgood Art">
+  <meta property="og:title" content="Archives Wall – JFeelgood">
+  <meta property="og:description" content="A wall of 186 paintings spanning 2004–2025 – experiments, detours, and breakthroughs from two decades of work.">
+  <meta property="og:image" content="https://jfeelgood.com/assets/images/opt/og-jfeelgood.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Archives Wall – JFeelgood">
+  <meta name="twitter:description" content="A wall of 186 paintings spanning 2004–2025.">
+  <meta name="twitter:image" content="https://jfeelgood.com/assets/images/opt/og-jfeelgood.jpg">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "Archives Wall – JFeelgood",
+    "url": "https://jfeelgood.com/archives.html",
+    "description": "A wall of paintings by JFeelgood spanning 2004–2025.",
+    "author": { "@type": "Person", "name": "JFeelgood", "url": "https://jfeelgood.com/" }
+  }
+  </script>
   <script defer src="https://cdn.vercel-insights.com/v1/script.js"></script>
   <style>
   :root {
@@ -263,6 +284,23 @@
   box-shadow: 0 10px 30px rgba(0,0,0,0.08);
   z-index: -1;
 }
+
+.archive-collect-banner {
+  font-size: 0.86rem;
+  color: var(--text);
+  background: radial-gradient(circle at top left, #fbe8c6 0, #f1d4b8 100%);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.07);
+}
+
+.archive-collect-banner a {
+  color: var(--link-hover);
+  font-weight: 600;
+  white-space: nowrap;
+}
 </style>
 </head>
 <body>
@@ -297,6 +335,11 @@
           Scroll, zoom out, and let the whole wall hit you.
         </div>
 
+        <div class="archive-collect-banner">
+          Some of these works are available as limited-edition collectible art cards – editions of 50, $23 each.
+          <a href="https://minicuration.com/shop.html?utm_source=jfeelgood&amp;utm_medium=referral&amp;utm_campaign=archives" target="_blank" rel="noopener">Browse the cards at minicuration ↗</a>
+        </div>
+
         <div class="archive-grid" id="archive-grid">
           <!-- Images will be inserted here by JavaScript -->
         </div>
@@ -311,14 +354,7 @@
     </footer>
   </div>
 
-
- 
-<!-- Put this where you want the images to appear -->
-<div id="imageContainer"></div>
-
 <script>
-
-
   const archiveImages = [
   "Vicarious.png",
   "best friend.png",
@@ -353,12 +389,24 @@ archiveImages.forEach(name => {
   const item = document.createElement('div');
   item.className = 'archive-item';
 
+  const base = name.replace(/\.(jpe?g|png)$/i, '');
+
+  // Small WebP thumbnail in the grid; click through to the full-resolution original.
+  const link = document.createElement('a');
+  link.href = 'assets/images/archives/' + name;
+  link.target = '_blank';
+  link.rel = 'noopener';
+
   const img = document.createElement('img');
   img.className = 'archive-img';
-  img.src = 'assets/images/archives/' + name;
-  img.alt = name.replace(/[-_]/g, ' ');
+  img.src = 'assets/images/archives/thumbs/' + base + '.webp';
+  img.alt = base.replace(/[-_]/g, ' ') + ' – painting by JFeelgood';
+  img.loading = 'lazy';
+  img.decoding = 'async';
+  img.onerror = () => { img.onerror = null; img.src = 'assets/images/archives/' + name; };
 
-  item.appendChild(img);
+  link.appendChild(img);
+  item.appendChild(link);
   gridEl.appendChild(item);
 });
 
