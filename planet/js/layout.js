@@ -46,6 +46,7 @@ export function resolveZones() {
   z.books = zoneDir(ZONES.books.bearing, ZONES.books.dist);
   z.collect = zoneDir(ZONES.collect.bearing, ZONES.collect.dist);
   z.nova = zoneDir(ZONES.nova.bearing, ZONES.nova.dist);
+  z.garage = zoneDir(ZONES.garage.bearing, ZONES.garage.dist);
   z.billboards = ZONES.billboards.map((b) => zoneDir(b.bearing, b.dist));
   return z;
 }
