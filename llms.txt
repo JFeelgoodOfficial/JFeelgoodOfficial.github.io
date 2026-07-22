@@ -6,7 +6,7 @@ JFeelgood creates one-of-a-kind original artworks that explore identity, resilie
 
 ## Site Pages
 
-- [Home](https://jfeelgood.com/): An explorable first-person 3D planet (desktop, WebGL). Walk a golden world where featured paintings stand as giant billboards, the 186-work archive hangs inside a gallery rotunda, and the Self Work series, books, and art cards each have their own place on the terrain.
+- [Home](https://jfeelgood.com/): An explorable first-person 3D planet (desktop, WebGL). Walk a golden world where featured paintings stand as giant billboards, the 186-work archive hangs inside a gallery rotunda, and the Self Work series, books, and art cards each have their own place on the terrain. A garage on the terrain houses four drivable/flyable vehicles — a UAV drone, a plane, a tank, and a motorcycle — for exploring the hills, mountains, forests, deserts, and lakes.
 - [Classic Site](https://jfeelgood.com/classic.html): The same content as a traditional page — featured paintings, the Self Work series, the story of the artist's growth, books, and limited-edition art cards. Served automatically to mobile and non-WebGL visitors.
 - [Archives Wall](https://jfeelgood.com/archives.html): 186 paintings spanning 2004–2025 in a single scrolling wall.
 

@@ -4,7 +4,8 @@ Static site for JFeelgood — paintings, the Self Work series, books, and limite
 
 ## Pages
 
-- `index.html` — single-page gallery: hero (Dreamfall), featured works carousel, story of growth carousel, Collect section (limited-edition cards), archives promo, Self Work carousel, books, about, NOVA 7.
+- `index.html` — the explorable 3D planet (Three.js, desktop/WebGL). Bootstraps `planet/js/main.js`; the on-terrain content zones (billboards, gallery rotunda, Self Work, books, collect, NOVA), a vehicle **garage** (drone/plane/tank/motorcycle — walk up and press E to pilot, third-person chase cam), and streaming biome foliage (forest/desert/plains/alpine) all live under `planet/js/`. Non-WebGL/mobile visitors are redirected to `classic.html`.
+- `classic.html` — single-page gallery: hero (Dreamfall), featured works carousel, story of growth carousel, Collect section (limited-edition cards), archives promo, Self Work carousel, books, about, NOVA 7.
 - `archives.html` — "Archives Wall": masonry grid of 186 paintings (2004–2025), rendered from lazy-loaded WebP thumbnails that click through to full-resolution originals.
 - `llms.txt` — machine-readable summary for AI crawlers. Keep it in sync with the real pages and products.
 - `robots.txt` / `sitemap.xml` — standard crawl config.

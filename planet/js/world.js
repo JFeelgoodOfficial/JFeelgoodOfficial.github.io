@@ -10,6 +10,8 @@ import { resolveZones, zoneDir } from './layout.js';
 import { makeTextureManager } from './textures.js';
 import { buildZones } from './zones.js';
 import { buildGallery, galleryActive, updateGallery, galleryInteract, getGalleryScene, setExitHandler } from './gallery.js';
+import { buildVehicles, vehicleActive, exitVehicle, updateVehiclePrompt, vehicleCenter } from './vehicles.js';
+import { buildFoliage } from './foliage.js';
 import { spawnAt } from './walk.js';
 import {
   updateInteract, fireInteract, currentFocus, clearInteractables,
@@ -20,6 +22,7 @@ import {
 } from './hud.js';
 
 let dressing = null;
+let foliage = null;
 let zones = null;
 let tm = null;
 let ctx = null;
@@ -29,6 +32,7 @@ let zoneUpdaters = [];
 const _camPos = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
 const _up = new THREE.Vector3();
+const _centre = new THREE.Vector3();
 
 function buildClearings() {
   const clr = [];
@@ -38,6 +42,7 @@ function buildClearings() {
   clr.push({ dir: zones.books, r: 18 });
   clr.push({ dir: zones.collect, r: 18 });
   clr.push({ dir: zones.nova, r: 14 });
+  clr.push({ dir: zones.garage, r: 34 });
   for (const b of zones.billboards) clr.push({ dir: b, r: 22 });
   for (let i = 0; i <= 4; i++) {
     const t = i / 4;
@@ -61,6 +66,12 @@ export async function buildWorld(context) {
   compassEntries = built.compass;
   zoneUpdaters = built.updaters;
 
+  // the garage + its four vehicles, and the streaming biome foliage that
+  // follows the player/vehicle across the whole planet
+  const veh = buildVehicles(ctx);
+  if (veh && veh.compass) compassEntries = compassEntries.concat(veh.compass);
+  foliage = buildFoliage(ctx.planet, zones.spawn);
+
   await buildGallery(ctx, zones, tm);
   window.__tm = tm; // gallery grabs this to lazily register interior textures
 
@@ -82,6 +93,7 @@ export function enterContent(relock) {
 export function handleInteract() {
   if (isOverlayOpen()) { closeOverlays(); return; }
   if (galleryActive()) { galleryInteract(); return; }
+  if (vehicleActive()) { exitVehicle(); return; }
   fireInteract();
 }
 
@@ -107,6 +119,17 @@ export function updateWorld(dt, t, camera) {
   if (dressing) dressing.update(t);
   tm.update(_camPos, performance.now());
   for (const fn of zoneUpdaters) fn(dt, t);
+
+  // While piloting a vehicle the chase camera is nowhere near the player, so
+  // the vehicle module owns the prompt and the foliage follows the vehicle.
+  if (vehicleActive()) {
+    if (foliage) foliage.update(vehicleCenter(_centre), t);
+    updateVehiclePrompt();
+    updateCompass(compassEntries, _camPos, _fwd, _up, THREE);
+    return;
+  }
+
+  if (foliage) foliage.update(_camPos, t);
 
   if (isOverlayOpen()) hidePrompt();
   else {

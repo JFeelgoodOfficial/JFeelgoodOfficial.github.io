@@ -7,6 +7,7 @@ import { C, LANDING_DIR, NORTH, SUN } from './config.js';
 import { createPlanet, bakePlanet, updatePlanet } from './planet.js';
 import { input, initInput, lockPointer } from './input.js';
 import { walk, stepWalk, updateWalkCamera, spawnAt } from './walk.js';
+import { vehicleActive, stepVehicle, updateVehicleCamera } from './vehicles.js';
 import { buildWorld, enterContent, updateWorld, resolveZoneJump, handleInteract, activeScene } from './world.js';
 
 // no-WebGL gate already flagged the <html> element; bail to the card.
@@ -147,7 +148,9 @@ function frame() {
   }
 
   if (walk.planet) {
-    if (FLY) {
+    if (vehicleActive()) {
+      if (input.locked || DEBUG) { stepVehicle(dt, t); updateVehicleCamera(camera); }
+    } else if (FLY) {
       // noclip: move the player freely along heading/up for debug screenshots
       const up = walk.player.clone().normalize();
       const right = new THREE.Vector3().crossVectors(walk.heading, up).normalize();

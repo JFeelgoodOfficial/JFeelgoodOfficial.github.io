@@ -104,4 +104,5 @@ export const ZONES = {
   books: { bearing: 200, dist: 100 },
   collect: { bearing: 240, dist: 90 },
   nova: { bearing: 160, dist: 170 },
+  garage: { bearing: 270, dist: 84 }, // the vehicle hangar
 };

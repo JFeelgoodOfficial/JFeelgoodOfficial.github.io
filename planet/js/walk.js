@@ -83,6 +83,11 @@ function waterDepth(planet, up) {
   return Math.max(planet.seaR - (planet.radius + planet.groundAtLocal(up)), 0);
 }
 
+// Exported so the vehicle controller (vehicles.js) rides on the exact same
+// walkable floor — terrain plus any structure pad — that the on-foot walker uses.
+export function floorRadiusAt(planet, up) { return floorRadius(planet, up); }
+export function waterDepthAt(planet, up) { return waterDepth(planet, up); }
+
 // Place the walker at a unit direction, feet on the floor, facing `headingDir`.
 export function spawnAt(planet, dir, headingDir) {
   walk.planet = planet;
