@@ -50,6 +50,12 @@ export const walk = {
 const colliders = [];
 const pads = [];
 
+// Optional structure-collision hook (set by biomeCivs when a city is active):
+// { wall(playerWorldVec3), floor(playerWorldVec3) -> world radius or -Infinity }.
+// Lets the walker enter building interiors — walls block, floors carry.
+let structureFn = null;
+export function setStructureResolver(fn) { structureFn = fn; }
+
 export function clearColliders() { colliders.length = 0; pads.length = 0; }
 export function addCollider(pos, radius) { colliders.push({ pos: pos.clone(), radius }); }
 // A flat circular pad centered at `centerDir` (unit) whose top sits at radial
@@ -75,6 +81,11 @@ function floorRadius(planet, up) {
       const padTop = pad.heightR;
       r = Math.max(r, THREE.MathUtils.lerp(padTop, r, t));
     }
+  }
+  // Building interior floors (city.structures via biomeCivs) sit above terrain.
+  if (structureFn) {
+    const sr = structureFn.floor(walk.player);
+    if (sr > r) r = sr;
   }
   return r;
 }
@@ -172,6 +183,9 @@ export function stepWalk(dt) {
       walk.player.addScaledVector(_v, (col.radius - d) / d);
     }
   }
+
+  // --- building wall push-out (doorways stay open) ---
+  if (structureFn) structureFn.wall(walk.player);
 
   // --- recompute up / radius after horizontal step ---
   _up.copy(walk.player).normalize();

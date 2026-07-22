@@ -12,22 +12,26 @@ import { buildZones } from './zones.js';
 import { buildGallery, galleryActive, updateGallery, galleryInteract, getGalleryScene, setExitHandler } from './gallery.js';
 import { buildVehicles, vehicleActive, exitVehicle, updateVehiclePrompt, vehicleCenter } from './vehicles.js';
 import { buildFoliage } from './foliage.js';
+import { initBiomeCivs } from './biomeCivs.js';
 import { spawnAt } from './walk.js';
 import {
   updateInteract, fireInteract, currentFocus, clearInteractables,
 } from './interact.js';
 import {
-  initHud, initCompassScratch, showPrompt, hidePrompt, showHint,
+  initHud, initCompassScratch, showPrompt, hidePrompt, showHint, showCard,
   updateCompass, isOverlayOpen, closeOverlays,
 } from './hud.js';
+import { buildCitizenCard } from './citydialogue.js';
 
 let dressing = null;
 let foliage = null;
+let biomeCivs = null;
 let zones = null;
 let tm = null;
 let ctx = null;
 let compassEntries = [];
 let zoneUpdaters = [];
+let pendingTalk = null; // nearest city citizen in talk range this frame, or null
 
 const _camPos = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
@@ -72,6 +76,10 @@ export async function buildWorld(context) {
   if (veh && veh.compass) compassEntries = compassEntries.concat(veh.compass);
   foliage = buildFoliage(ctx.planet, zones.spawn);
 
+  // Living civilisations: one dormant city seed per biome, woken by proximity,
+  // growing while the player is near and ending by ascension or catastrophe.
+  biomeCivs = initBiomeCivs(ctx.planet, { notify: showHint });
+
   await buildGallery(ctx, zones, tm);
   window.__tm = tm; // gallery grabs this to lazily register interior textures
 
@@ -94,6 +102,7 @@ export function handleInteract() {
   if (isOverlayOpen()) { closeOverlays(); return; }
   if (galleryActive()) { galleryInteract(); return; }
   if (vehicleActive()) { exitVehicle(); return; }
+  if (pendingTalk) { showCard(buildCitizenCard(pendingTalk.citizen, pendingTalk.life)); return; }
   fireInteract();
 }
 
@@ -124,18 +133,26 @@ export function updateWorld(dt, t, camera) {
   // the vehicle module owns the prompt and the foliage follows the vehicle.
   if (vehicleActive()) {
     if (foliage) foliage.update(vehicleCenter(_centre), t);
+    if (biomeCivs) biomeCivs.update(dt, t, _centre);
     updateVehiclePrompt();
     updateCompass(compassEntries, _camPos, _fwd, _up, THREE);
     return;
   }
 
   if (foliage) foliage.update(_camPos, t);
+  if (biomeCivs) biomeCivs.update(dt, t, _camPos);
 
-  if (isOverlayOpen()) hidePrompt();
+  if (isOverlayOpen()) { hidePrompt(); pendingTalk = null; }
   else {
-    const focus = updateInteract(_camPos, _fwd);
-    if (focus && focus.prompt) showPrompt(focus.prompt);
-    else hidePrompt();
+    // A nearby city citizen takes priority over the generic interact scan.
+    pendingTalk = biomeCivs ? biomeCivs.talkTarget(_camPos) : null;
+    if (pendingTalk) {
+      showPrompt(`Talk to ${pendingTalk.citizen.name} &nbsp; <b>E</b>`);
+    } else {
+      const focus = updateInteract(_camPos, _fwd);
+      if (focus && focus.prompt) showPrompt(focus.prompt);
+      else hidePrompt();
+    }
   }
   updateCompass(compassEntries, _camPos, _fwd, _up, THREE);
 }
