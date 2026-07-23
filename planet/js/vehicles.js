@@ -245,13 +245,15 @@ function stepPlane(v, dt) {
 }
 
 // Orient the body: local +Z → facing, +Y → radial-ish up, then bank by roll.
+// The basis MUST be right-handed (right = up × fwd, then trueUp = fwd × right),
+// or makeBasis builds a reflection and setFromRotationMatrix flips the body.
 function orientVehicle(v) {
   _up.copy(v.pos).normalize();
   _fwd.copy(v.def.kind === 'ground' ? v.heading : v.forward).normalize();
-  _right.crossVectors(_fwd, _up);
+  _right.crossVectors(_up, _fwd);
   if (_right.lengthSq() < 1e-6) _right.set(1, 0, 0);
   _right.normalize();
-  _tmp.crossVectors(_right, _fwd).normalize(); // orthonormal up
+  _tmp.crossVectors(_fwd, _right).normalize(); // orthonormal up (right-handed)
   if (v.roll) { _right.applyAxisAngle(_fwd, v.roll); _tmp.applyAxisAngle(_fwd, v.roll); }
   _basis.makeBasis(_right, _tmp, _fwd);
   v.group.quaternion.setFromRotationMatrix(_basis);
