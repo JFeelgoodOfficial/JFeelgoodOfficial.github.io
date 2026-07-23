@@ -143,6 +143,14 @@ function buildBillboards(ctx, tm, compass) {
     g.add(beam);
 
     const panel = makeArtPanel({ maxW: 20, maxH: 13, frameW: 0.4, double: false });
+    // Hide the gold frame on these oversized billboards: at 20+ world units wide
+    // and viewed from up to 240u away, the frame plane (z=0.01) z-fought the art
+    // plane (z=0.03) and bled a gold streak across the painting. The slightly
+    // larger dark backing still reads as a thin border. Push the art forward too
+    // so no residual z-fighting remains. (Billboard-only — the shared gold frame
+    // stays on the gallery, Self Work, easels, lecterns and collect stand.)
+    panel.frame.visible = false;
+    panel.art.position.z = 0.06;
     panel.group.position.set(0, 13, 0.4);
     g.add(panel.group);
 

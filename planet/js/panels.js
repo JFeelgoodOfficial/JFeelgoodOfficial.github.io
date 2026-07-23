@@ -57,14 +57,11 @@ export function makeArtPanel(opts = {}) {
   };
 }
 
-// A simple emissive beacon column — a landmark visible over the terrain,
-// tinted gold. Built cheaply from a cylinder; the tip glows.
+// A floating glowing orb marking a structure's location — a landmark visible
+// over the terrain, tinted gold. Just the sphere: the old shaft/pole ran
+// straight down through the billboard art below it, so it's gone.
 export function makeBeacon(height = 26, color = 0xf5b642) {
   const group = new THREE.Group();
-  const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.5, toneMapped: false });
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.9, height, 8, 1, true), mat);
-  shaft.position.y = height / 2;
-  group.add(shaft);
   const tip = new THREE.Mesh(new THREE.SphereGeometry(1.6, 12, 8),
     new THREE.MeshBasicMaterial({ color, toneMapped: false }));
   tip.position.y = height;

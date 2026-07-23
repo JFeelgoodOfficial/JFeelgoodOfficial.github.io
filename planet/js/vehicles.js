@@ -52,8 +52,16 @@ const DEFS = {
     controls: 'W/S throttle · A/D steer · SHIFT boost · MOUSE look · E dismount',
     build: buildMotorcycle,
   },
+  horse: {
+    kind: 'ground', name: 'horse', mount: true,
+    accel: 16, maxSpeed: 30, revFrac: 0.28, brake: 20, turn: 1.7, lean: 0.12, rideH: 0.05,
+    boost: 1.7, wheelRate: 0, camDist: 8.5, camHeight: 4.0,
+    controls: 'W/S ride · A/D rein · SHIFT gallop · MOUSE look · E dismount',
+    build: buildHorse,
+  },
 };
 const PARK_ORDER = ['drone', 'plane', 'tank', 'motorcycle'];
+const HORSE_COUNT = 3;
 
 let planet = null, scene = null;
 let active = null;
@@ -119,16 +127,51 @@ export function buildVehicles(ctx) {
     vehicles.push(v);
   });
 
+  // --- stables: a paddock of horses off to one side of the hangar ----------
+  // Direction of the paddock centre: out front of the garage and to the east.
+  const stableDir = new THREE.Vector3().copy(gdir)
+    .addScaledVector(_east, 40 / planet.radius)
+    .addScaledVector(fwdT, 12 / planet.radius)
+    .normalize();
+  buildPaddock(stableDir, fwdT);
+  for (let i = 0; i < HORSE_COUNT; i++) {
+    const def = DEFS.horse;
+    const built = def.build();
+    scene.add(built.group);
+    const off = (i - (HORSE_COUNT - 1) / 2) * 6;
+    const dir = new THREE.Vector3().copy(stableDir)
+      .addScaledVector(_east, off / planet.radius)
+      .addScaledVector(fwdT, (i % 2 ? 3 : -3) / planet.radius)
+      .normalize();
+    const floorR = floorRadiusAt(planet, dir);
+    const v = {
+      def, group: built.group, parts: built.parts,
+      pos: dir.clone().multiplyScalar(floorR + def.rideH),
+      heading: fwdT.clone(), forward: fwdT.clone(),
+      speed: 0, roll: 0, wheelSpin: 0, propSpin: 0, speed01: 0, gaitPhase: i * 1.7,
+      interactable: null,
+    };
+    orientVehicle(v);
+    v.interactable = addInteractable({
+      pos: v.pos.clone(), radius: 4.5,
+      prompt: '<b>E</b> — mount the horse',
+      action: () => enterVehicle(v),
+    });
+    vehicles.push(v);
+  }
+
   // headless/debug hooks
   if (typeof window !== 'undefined' && window.__debug) {
     window.__debug.enterVehicle = (i = 0) => enterVehicle(vehicles[i]);
     window.__debug.exitVehicle = exitVehicle;
     window.__debug.vehicleActive = vehicleActive;
     window.__debug.vehicles = vehicles;
+    window.__debug.mountHorse = () => { const h = vehicles.find((x) => x.def.mount); if (h) enterVehicle(h); return !!h; };
   }
 
   const gpos = gdir.clone().multiplyScalar(planet.radius + planet.groundAtLocal(gdir));
-  return { compass: [{ name: 'GARAGE', pos: gpos }] };
+  const spos = stableDir.clone().multiplyScalar(planet.radius + planet.groundAtLocal(stableDir));
+  return { compass: [{ name: 'GARAGE', pos: gpos }, { name: 'STABLES', pos: spos }] };
 }
 
 // ---------------------------------------------------------------------------
@@ -172,6 +215,8 @@ function stepGround(v, dt) {
 
   v.roll += ((-turn * def.lean) - v.roll) * Math.min(1, 6 * dt);
   v.wheelSpin += v.speed * dt * (def.wheelRate || 0);
+  // gait clock for animated legs (horses); slow idle drift, faster under way
+  v.gaitPhase = (v.gaitPhase || 0) + (0.6 + Math.abs(v.speed) * 0.16) * dt;
   v.speed01 = Math.min(Math.abs(v.speed) / def.maxSpeed, 1);
 }
 
@@ -265,6 +310,20 @@ function animateParts(v) {
   if (p.wheels) for (const w of p.wheels) w.rotation.x = v.wheelSpin;
   if (p.rotors) for (const r of p.rotors) r.rotation.y = v.propSpin;
   if (p.props) for (const pr of p.props) pr.rotation.z = v.propSpin;
+  if (p.legs) {
+    // trot: diagonal leg pairs (front-left+back-right vs front-right+back-left)
+    const ph = v.gaitPhase || 0;
+    const amp = 0.18 + 0.55 * (v.speed01 || 0);
+    const s = Math.sin(ph * 7);
+    p.legs[0].rotation.x = s * amp;
+    p.legs[3].rotation.x = s * amp;
+    p.legs[1].rotation.x = -s * amp;
+    p.legs[2].rotation.x = -s * amp;
+    if (p.head) p.head.rotation.x = -0.12 + Math.sin(ph * 7) * 0.05 * (v.speed01 || 0);
+    if (p.tail) p.tail.rotation.z = Math.sin(ph * 4) * 0.16;
+    // a gentle body bob while moving
+    if (p.body) p.body.position.y = p.bodyY + Math.abs(Math.sin(ph * 7)) * 0.06 * (v.speed01 || 0);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -305,6 +364,7 @@ export function enterVehicle(v) {
   v.roll = 0;
   v.speed = v.def.kind === 'ground' ? 0 : (v.def.hover ? 0 : v.def.minSpeed);
   input.mouseX = 0; input.mouseY = 0;
+  if (v.parts.rider) v.parts.rider.visible = true; // a rider appears in the saddle
   hidePrompt();
   showHint(v.def.controls);
 }
@@ -323,11 +383,12 @@ export function exitVehicle() {
   const floorR = floorRadiusAt(planet, dir);
   v.pos.copy(dir).multiplyScalar(floorR + v.def.rideH);
   v.speed = 0; v.roll = 0;
+  if (v.parts.rider) v.parts.rider.visible = false; // rider dismounts
   orientVehicle(v);
   v.interactable.pos.copy(v.pos);
 
   active = null;
-  showHint('W A S D to walk · Shift run · E near a vehicle to pilot it');
+  showHint('W A S D to walk · Shift run · E near a vehicle or horse');
 }
 
 // world.js calls this on E while piloting; also drives the exit prompt.
@@ -459,6 +520,88 @@ function buildPlane() {
     const w = axleWheel(0.3, 0.16, M(0x15151a, 0.9)); w.position.set(sx * 1.4, 0.65, 0.4); g.add(w);
   }
   return { group: g, parts: { props } };
+}
+
+// --- horse (+Z forward). Hooves at y≈0; legs pivot at the hip for the gait. ---
+function buildHorse() {
+  const g = new THREE.Group();
+  const coats = [0x6b4a2f, 0x3a2a20, 0x8a6a45, 0x2b2b2f, 0xa8895f];
+  const coat = coats[Math.floor((0.5 + 0.5 * Math.sin(vehicles.length * 12.9)) * coats.length) % coats.length];
+  const hide = M(coat, 0.75, 0.02), mane = M(0x241813, 0.8), hoofM = M(0x1b1712, 0.7);
+  const tack = M(0x3a241a, 0.6, 0.1), leather = M(0x5a3a22, 0.6);
+
+  const hipY = 1.35, bodyY = hipY + 0.28;
+  const body = mesh(Box(0.85, 0.9, 2.1), hide); body.position.set(0, bodyY, -0.1); g.add(body);
+  // chest + rump rounding
+  const chest = mesh(new THREE.SphereGeometry(0.52, 14, 10), hide); chest.scale.set(0.85, 0.9, 0.8); chest.position.set(0, bodyY, 0.95); g.add(chest);
+  const rump = mesh(new THREE.SphereGeometry(0.55, 14, 10), hide); rump.scale.set(0.9, 0.95, 0.9); rump.position.set(0, bodyY, -1.15); g.add(rump);
+
+  // neck + head
+  const neck = mesh(Box(0.42, 1.0, 0.5), hide); neck.position.set(0, bodyY + 0.5, 1.15); neck.rotation.x = -0.6; g.add(neck);
+  const head = new THREE.Group(); head.position.set(0, bodyY + 0.95, 1.55);
+  const skull = mesh(Box(0.34, 0.42, 0.5), hide); skull.position.set(0, 0, 0); head.add(skull);
+  const muzzle = mesh(Box(0.26, 0.28, 0.5), hide); muzzle.position.set(0, -0.08, 0.42); head.add(muzzle);
+  for (const sx of [-1, 1]) { const ear = mesh(new THREE.ConeGeometry(0.09, 0.28, 6), hide); ear.position.set(sx * 0.12, 0.3, -0.05); head.add(ear); }
+  head.add(mesh(Box(0.1, 0.5, 0.1), mane)); // forelock stub
+  g.add(head);
+  // mane along the neck
+  const maneStrip = mesh(Box(0.08, 0.9, 0.5), mane); maneStrip.position.set(0, bodyY + 0.55, 1.12); maneStrip.rotation.x = -0.6; g.add(maneStrip);
+
+  // tail
+  const tail = new THREE.Group(); tail.position.set(0, bodyY + 0.1, -1.55);
+  const tuft = mesh(Box(0.16, 1.0, 0.16), mane); tuft.position.set(0, -0.45, -0.1); tuft.rotation.x = 0.5; tail.add(tuft);
+  g.add(tail);
+
+  // saddle + stirrups
+  const saddle = mesh(Box(0.7, 0.22, 0.9), tack); saddle.position.set(0, bodyY + 0.5, -0.2); g.add(saddle);
+  for (const sx of [-1, 1]) { const st = mesh(Box(0.06, 0.5, 0.06), leather); st.position.set(sx * 0.42, bodyY + 0.1, -0.2); g.add(st); }
+
+  // four legs (groups pivoting at the hip)
+  const legs = [];
+  const legMat = M(coat, 0.75, 0.02);
+  const legPos = [[-0.32, 0.85], [0.32, 0.85], [-0.32, -1.0], [0.32, -1.0]]; // FL, FR, BL, BR
+  for (const [lx, lz] of legPos) {
+    const leg = new THREE.Group(); leg.position.set(lx, hipY, lz);
+    const shin = mesh(Box(0.22, 1.3, 0.26), legMat); shin.position.y = -0.62; leg.add(shin);
+    const hoof = mesh(Box(0.26, 0.22, 0.32), hoofM); hoof.position.y = -1.28; leg.add(hoof);
+    g.add(leg); legs.push(leg);
+  }
+
+  // rider (hidden until mounted): a simple seated figure in the saddle
+  const rider = new THREE.Group(); rider.position.set(0, bodyY + 0.55, -0.2); rider.visible = false;
+  const rcoat = M(0x3a5a7a, 0.7), rskin = M(0xd8a77a, 0.6);
+  rider.add(mesh(Box(0.44, 0.7, 0.36), rcoat)); // torso
+  const rhead = mesh(new THREE.SphereGeometry(0.2, 12, 10), rskin); rhead.position.y = 0.55; rider.add(rhead);
+  for (const sx of [-1, 1]) { const thigh = mesh(Box(0.16, 0.16, 0.6), M(0x2a2f3a, 0.7)); thigh.position.set(sx * 0.16, -0.25, 0.28); thigh.rotation.x = 0.9; rider.add(thigh); }
+  for (const sx of [-1, 1]) { const arm = mesh(Box(0.13, 0.5, 0.13), rcoat); arm.position.set(sx * 0.3, 0.05, 0.14); arm.rotation.x = 0.7; rider.add(arm); }
+  g.add(rider);
+
+  return { group: g, parts: { legs, head, tail, body, bodyY, rider } };
+}
+
+// A rail paddock so the horses read as "stables" beside the hangar.
+function buildPaddock(dir, faceDir) {
+  const g = new THREE.Group();
+  const rail = M(0x6e4a2e, 0.85), post = M(0x53381f, 0.9);
+  const half = 14, gap = 3.5;
+  for (let side = 0; side < 4; side++) {
+    const along = side < 2 ? 'x' : 'z';
+    const sign = side % 2 ? 1 : -1;
+    for (let i = -half; i <= half; i += gap) {
+      // leave a gate on the front (side 2, near the middle)
+      if (side === 2 && Math.abs(i) < gap) continue;
+      const p = mesh(Box(0.24, 2.0, 0.24), post);
+      if (along === 'x') p.position.set(i, 1.0, sign * half); else p.position.set(sign * half, 1.0, i);
+      g.add(p);
+    }
+    const beam = mesh(along === 'x' ? Box(half * 2, 0.16, 0.16) : Box(0.16, 0.16, half * 2), rail);
+    if (along === 'x') beam.position.set(0, 1.4, sign * half); else beam.position.set(sign * half, 1.4, 0);
+    g.add(beam);
+    const beam2 = beam.clone(); beam2.position.y = 0.7; g.add(beam2);
+  }
+  const sign = makeSign('STABLES', 10, 2.6); sign.position.set(0, 3.2, half + 0.1); g.add(sign);
+  placeOnSurface(planet, g, dir, faceDir);
+  scene.add(g);
 }
 
 // --- motorcycle (+Z forward) ---
