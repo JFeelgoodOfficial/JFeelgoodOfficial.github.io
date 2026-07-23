@@ -87,9 +87,11 @@ void main() {
   vec3 p = normalize(vObjPos);
   float elev = elevation(p, uOct);
   float lat = abs(p.y);
+  bool land = elev >= uSeaLevel;
 
+  // --- albedo bands (unchanged palette) ---
   vec3 col;
-  if (elev < uSeaLevel) {
+  if (!land) {
     float d = elev / max(uSeaLevel, 1e-4);
     col = mix(uColDeep, uColShallow, d * d);
   } else {
@@ -97,36 +99,62 @@ void main() {
     col = mix(uColSand, uColLow, smoothstep(0.02, 0.18, e));
     col = mix(col, uColMid, smoothstep(0.28, 0.58, e));
     col = mix(col, uColHigh, smoothstep(0.62, 0.84, e));
-    if (uOct >= 6) {
-      float grain = fbm(p * 40.0, 3);
-      col *= 0.88 + 0.24 * grain;
-    }
   }
-  col = mix(col, vec3(0.90, 0.94, 1.0),
-            smoothstep(uIceLat, uIceLat + 0.21, lat + (elev - 0.5) * 0.15));
 
-  vec3 N = normalize(vWorldNormal), S = normalize(uSun), V = normalize(vViewDir);
+  // --- shared tangent basis from screen-space derivatives ---
+  vec3 N = normalize(vWorldNormal);
+  vec3 dpx = dFdx(vObjPos), dpy = dFdy(vObjPos);
+  vec3 r1 = cross(dpy, N), r2 = cross(N, dpx);
+  float det = dot(dpx, r1);
+  bool haveBasis = abs(det) > 1e-10;
 
-  if (uAmp > 0.0 && elev > uSeaLevel) {
-    vec3 dpx = dFdx(vObjPos);
-    vec3 dpy = dFdy(vObjPos);
-    vec3 r1 = cross(dpy, N);
-    vec3 r2 = cross(N, dpx);
-    float det = dot(dpx, r1);
-    if (abs(det) > 1e-10) {
+  // macro relief bump from the elevation field + gated fine micro-relief so the
+  // near ground (uOct 6) reads as textured rather than glassy-smooth.
+  float detail = 0.5;
+  if (land && haveBasis) {
+    if (uAmp > 0.0) {
       vec3 grad = (r1 * dFdx(elev) + r2 * dFdy(elev)) / det;
-      vec3 pert = grad * uAmp * 1.4;
+      vec3 pert = grad * uAmp * 1.6;
       pert *= 3.0 / max(3.0, length(pert));
       N = normalize(N - pert);
     }
+    if (uOct >= 6) {
+      detail = fbm(p * 130.0, 4);
+      vec3 mg = (r1 * dFdx(detail) + r2 * dFdy(detail)) / det;
+      N = normalize(N - mg * 0.5);
+    }
   }
 
+  // slope relative to the local radial up: rock on steep faces + broad grain.
+  float slope = clamp(1.0 - dot(N, p), 0.0, 1.0);
+  if (land) {
+    vec3 rock = mix(uColMid, vec3(0.24, 0.22, 0.20), 0.65);
+    col = mix(col, rock, smoothstep(0.18, 0.5, slope));
+    col *= 0.9 + 0.2 * detail;
+  }
+
+  col = mix(col, vec3(0.90, 0.94, 1.0),
+            smoothstep(uIceLat, uIceLat + 0.21, lat + (elev - 0.5) * 0.15));
+
+  vec3 S = normalize(uSun), V = normalize(vViewDir);
   float ndl = dot(N, S);
-  float day = smoothstep(-0.12, 0.28, ndl);
-  vec3 lit = col * (0.06 + 0.94 * day);
+  float day = smoothstep(-0.14, 0.30, ndl);
+
+  // hemispheric ambient (cool sky above, warm bounce below) so relief still
+  // reads on the shaded hemisphere instead of crushing flat to black.
+  float up = clamp(dot(N, p) * 0.5 + 0.5, 0.0, 1.0);
+  vec3 ambient = mix(vec3(0.10, 0.09, 0.09), vec3(0.20, 0.25, 0.34), up);
+  float ao = 1.0 - 0.25 * (1.0 - detail); // crevice occlusion
+  vec3 lit = col * (ambient + vec3(1.0, 0.97, 0.90) * day) * ao;
+
+  // specular: gentle sheen on land, brighter on the wet shallows
+  vec3 H = normalize(S + V);
+  float shin = land ? 24.0 : 70.0;
+  float specAmt = land ? 0.10 : 0.5;
+  lit += vec3(1.0, 0.97, 0.88) * pow(max(dot(N, H), 0.0), shin) * day * specAmt;
 
   float rim = pow(1.0 - max(dot(normalize(vWorldNormal), V), 0.0), 3.0) * day;
-  lit += vec3(0.35, 0.45, 0.7) * rim * 0.35;
+  lit += vec3(0.35, 0.45, 0.7) * rim * 0.30;
 
   gl_FragColor = vec4(lit, 1.0);
 }
@@ -141,18 +169,39 @@ varying vec3 vViewDir;
 uniform vec3 uSun;
 uniform vec3 uWaterColor;
 uniform float uGloss;
+uniform float uTime;
+
+// animated ripple field: crossed traveling sine waves in the surface tangent
+float ripple(vec3 p) {
+  float a = sin(p.x * 120.0 + uTime * 1.3) * 0.5 + 0.5;
+  float b = sin(p.z * 138.0 - uTime * 1.1) * 0.5 + 0.5;
+  float c = sin((p.x + p.z) * 90.0 + uTime * 0.7) * 0.5 + 0.5;
+  return (a + b + c) / 3.0;
+}
 
 void main() {
+  vec3 p = normalize(vObjPos);
   vec3 N = normalize(vWorldNormal), S = normalize(uSun), V = normalize(vViewDir);
+
+  // perturb the normal by the ripple gradient (screen-space) for live shimmer
+  vec3 dpx = dFdx(vObjPos), dpy = dFdy(vObjPos);
+  vec3 r1 = cross(dpy, N), r2 = cross(N, dpx);
+  float det = dot(dpx, r1);
+  float rip = ripple(p);
+  if (abs(det) > 1e-10) {
+    vec3 g = (r1 * dFdx(rip) + r2 * dFdy(rip)) / det;
+    N = normalize(N - g * 0.12);
+  }
+
   float day = smoothstep(-0.12, 0.28, dot(N, S));
-
   vec3 col = uWaterColor * (0.05 + 0.95 * day);
+  col *= 0.92 + 0.16 * rip; // faint moving light on the surface
 
-  float fres = pow(1.0 - max(dot(N, V), 0.0), 3.0);
-  col += vec3(0.25, 0.4, 0.6) * fres * 0.5 * day * uGloss;
+  float fres = pow(1.0 - max(dot(N, V), 0.0), 4.0);
+  col += vec3(0.30, 0.46, 0.66) * fres * 0.7 * day * uGloss;
 
   vec3 H = normalize(S + V);
-  col += vec3(1.0, 0.95, 0.8) * pow(max(dot(N, H), 0.0), 90.0) * day * uGloss;
+  col += vec3(1.0, 0.95, 0.8) * pow(max(dot(N, H), 0.0), 120.0) * day * uGloss * 1.3;
 
   gl_FragColor = vec4(col, 1.0);
 }

@@ -56,6 +56,7 @@ export function createPlanet(scene) {
         uSun: { value: SUN.clone() },
         uWaterColor: { value: new THREE.Color(C.WATER.color) },
         uGloss: { value: C.WATER.gloss },
+        uTime: { value: 0 },
       },
     })
   );
@@ -178,6 +179,7 @@ const _yAxis = new THREE.Vector3(0, 1, 0);
 // the true horizon.
 export function updatePlanet(planet, t, camera, quality) {
   planet.clouds.material.uniforms.uTime.value = t;
+  if (planet.water.material.uniforms.uTime) planet.water.material.uniforms.uTime.value = t;
 
   camera.getWorldPosition(_cam);
   const distR = _cam.length() / planet.radius; // planet centered at origin

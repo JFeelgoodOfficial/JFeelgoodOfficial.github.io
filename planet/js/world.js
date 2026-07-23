@@ -12,6 +12,7 @@ import { buildZones } from './zones.js';
 import { buildGallery, galleryActive, updateGallery, galleryInteract, getGalleryScene, setExitHandler } from './gallery.js';
 import { buildVehicles, vehicleActive, exitVehicle, updateVehiclePrompt, vehicleCenter } from './vehicles.js';
 import { buildFoliage } from './foliage.js';
+import { buildTerrainDetail } from './terrainDetail.js';
 import { initBiomeCivs } from './biomeCivs.js';
 import { spawnAt } from './walk.js';
 import {
@@ -25,6 +26,7 @@ import { buildCitizenCard } from './citydialogue.js';
 
 let dressing = null;
 let foliage = null;
+let terrainDetail = null;
 let biomeCivs = null;
 let zones = null;
 let tm = null;
@@ -75,6 +77,9 @@ export async function buildWorld(context) {
   const veh = buildVehicles(ctx);
   if (veh && veh.compass) compassEntries = compassEntries.concat(veh.compass);
   foliage = buildFoliage(ctx.planet, zones.spawn);
+  // high-detail near-ground patch that follows the player across the planet
+  terrainDetail = buildTerrainDetail(ctx.planet, zones.spawn, { quality: ctx.quality });
+  ctx.scene.add(terrainDetail.mesh);
 
   // Living civilisations: one dormant city seed per biome, woken by proximity,
   // growing while the player is near and ending by ascension or catastrophe.
@@ -135,6 +140,7 @@ export function updateWorld(dt, t, camera) {
   // the vehicle module owns the prompt and the foliage follows the vehicle.
   if (vehicleActive()) {
     if (foliage) foliage.update(vehicleCenter(_centre), t);
+    if (terrainDetail) terrainDetail.update(_centre);
     if (biomeCivs) biomeCivs.update(dt, t, _centre);
     updateVehiclePrompt();
     updateCompass(compassEntries, _camPos, _fwd, _up, THREE);
@@ -142,6 +148,7 @@ export function updateWorld(dt, t, camera) {
   }
 
   if (foliage) foliage.update(_camPos, t);
+  if (terrainDetail) terrainDetail.update(_camPos);
   if (biomeCivs) biomeCivs.update(dt, t, _camPos);
 
   if (isOverlayOpen()) { hidePrompt(); pendingTalk = null; }
