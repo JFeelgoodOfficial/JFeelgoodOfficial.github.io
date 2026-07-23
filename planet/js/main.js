@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { C, LANDING_DIR, NORTH, SUN } from './config.js';
 import { createPlanet, bakePlanet, updatePlanet } from './planet.js';
+import { createWeather } from './weather.js';
 import { input, initInput, lockPointer } from './input.js';
 import { walk, stepWalk, updateWalkCamera, spawnAt } from './walk.js';
 import { vehicleActive, stepVehicle, updateVehicleCamera } from './vehicles.js';
@@ -43,10 +44,14 @@ camera.up.copy(LANDING_DIR);
 const sun = new THREE.DirectionalLight(C.SUN_TINT, 2.2);
 sun.position.copy(SUN).multiplyScalar(3000);
 scene.add(sun);
-scene.add(new THREE.HemisphereLight(0xf0d8a8, 0x241a12, 0.5));
+const hemi = new THREE.HemisphereLight(0xf0d8a8, 0x241a12, 0.5);
+scene.add(hemi);
 
 // --- planet ---
 const planet = createPlanet(scene);
+
+// --- dynamic weather (fog / clouds / light / precipitation) ---
+const weather = createWeather({ scene, planet, sun, hemi, camera });
 
 let quality = 'high';
 let running = false;
@@ -70,10 +75,12 @@ window.__debug = {
     for (let i = 0; i < Math.round(seconds * 60); i++) {
       stepWalk(dt);
       updateWalkCamera(camera); // camera must lead updateWorld (interaction reads it)
+      try { weather.update(dt, i * dt); } catch (e) { /* ignore in headless */ }
       updateWorld(dt, i * dt, camera);
     }
   },
   interact: () => handleInteract(),
+  weather,
 };
 
 // --- load sequence ---
@@ -175,6 +182,7 @@ function frame() {
   }
 
   updatePlanet(planet, t, camera, quality);
+  try { weather.update(dt, t); } catch (e) { console.error(e); }
   try { updateWorld(dt, t, camera); } catch (e) { console.error(e); }
   renderer.render(scene, camera);
 }
