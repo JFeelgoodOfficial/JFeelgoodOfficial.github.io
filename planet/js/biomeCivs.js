@@ -187,12 +187,25 @@ export function initBiomeCivs(planet, opts = {}) {
 
   function dispose() { endActive(); }
 
+  // Compass markers so the player can find the settlements out in the wilds
+  // (they sit beyond the content disc, so without a heading cue they're easy
+  // to miss). Reuses world.js's compass strip.
+  function compassEntries() {
+    const label = { forest: 'Forest town', desert: 'Desert town', alpine: 'Peak town', plains: 'Plains city' };
+    return sites.map((s) => {
+      const g = planet.groundAtLocal(s.dir);
+      const pos = s.dir.clone().multiplyScalar(planet.radius + g + 8);
+      return { name: label[s.biome] || s.biome, pos };
+    });
+  }
+
   const controller = {
     sites,
     update,
     dispose,
     getActive: () => active,
     talkTarget,
+    compassEntries,
   };
 
   // Debug hooks for headless verification.

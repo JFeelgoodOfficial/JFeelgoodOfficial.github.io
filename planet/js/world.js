@@ -78,7 +78,9 @@ export async function buildWorld(context) {
 
   // Living civilisations: one dormant city seed per biome, woken by proximity,
   // growing while the player is near and ending by ascension or catastrophe.
+  // Their compass markers guide the player out to them across the wilds.
   biomeCivs = initBiomeCivs(ctx.planet, { notify: showHint });
+  compassEntries = compassEntries.concat(biomeCivs.compassEntries());
 
   await buildGallery(ctx, zones, tm);
   window.__tm = tm; // gallery grabs this to lazily register interior textures
@@ -95,7 +97,7 @@ export function activeScene() { return getGalleryScene(); }
 export function enterContent(relock) {
   initHud({ relock, onClose: () => {} });
   initCompassScratch(THREE);
-  showHint('W A S D to walk · Shift run · Space jump · E interact · Esc release cursor');
+  showHint('W A S D to walk · Shift run · Space jump · E interact · Follow the compass to distant settlements in the wilds — grab a vehicle at the garage to reach them faster');
 }
 
 export function handleInteract() {
