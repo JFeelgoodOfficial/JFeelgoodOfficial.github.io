@@ -16,7 +16,7 @@ const RESTREAM = 14;   // rebuild once the centre has moved this many units
 export function buildTerrainDetail(planet, spawnDir, opts = {}) {
   const N = opts.grid ?? (opts.quality === 'low' ? 40 : 64); // cells per side
   const HALF = opts.half ?? 82;                                // world units from centre to edge
-  const BIAS = 0.14;                                           // lift above the coarse mesh to avoid z-fight
+  const BIAS = 0.06;                                           // small lift above the coarse mesh (polygonOffset handles z-fight)
   const R = planet.radius;
   const seaR = planet.seaR;
 
