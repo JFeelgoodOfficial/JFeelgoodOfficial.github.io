@@ -26,6 +26,7 @@ const _target = new THREE.Vector3();
 const _wish = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
 const _v = new THREE.Vector3();
+const _wp = new THREE.Vector3();
 
 export const walk = {
   planet: null,
@@ -50,11 +51,19 @@ export const walk = {
 const colliders = [];
 const pads = [];
 
-// Optional structure-collision hook (set by biomeCivs when a city is active):
+// Structure-collision resolvers: biomeCivs registers one for the town, and
+// monteringger.js registers one for the mountain trail. Each is
 // { wall(playerWorldVec3), floor(playerWorldVec3) -> world radius or -Infinity }.
-// Lets the walker enter building interiors — walls block, floors carry.
-let structureFn = null;
-export function setStructureResolver(fn) { structureFn = fn; }
+// Floors carry the walker above terrain (building interiors, the mountain ramp);
+// walls block. Composable so the town and the mountain coexist.
+const structureFns = [];
+export function addStructureResolver(fn) { if (fn) structureFns.push(fn); }
+export function removeStructureResolver(fn) {
+  const i = structureFns.indexOf(fn);
+  if (i >= 0) structureFns.splice(i, 1);
+}
+// Back-compat single-resolver setter (clears the registry, then adds).
+export function setStructureResolver(fn) { structureFns.length = 0; if (fn) structureFns.push(fn); }
 
 export function clearColliders() { colliders.length = 0; pads.length = 0; }
 export function addCollider(pos, radius) { colliders.push({ pos: pos.clone(), radius }); }
@@ -69,7 +78,7 @@ function projectTangent(v, up) { v.addScaledVector(up, -v.dot(up)); }
 
 // Radial height of the walkable floor under unit direction `up`: max of the
 // terrain and any pad the point is inside (pads never dig below terrain).
-function floorRadius(planet, up) {
+function floorRadius(planet, up, atR) {
   let r = planet.radius + planet.groundAtLocal(up);
   for (let i = 0; i < pads.length; i++) {
     const pad = pads[i];
@@ -82,10 +91,16 @@ function floorRadius(planet, up) {
       r = Math.max(r, THREE.MathUtils.lerp(padTop, r, t));
     }
   }
-  // Building interior floors (city.structures via biomeCivs) sit above terrain.
-  if (structureFn) {
-    const sr = structureFn.floor(walk.player);
-    if (sr > r) r = sr;
+  // Structure floors (city interiors via biomeCivs, the mountain trail via
+  // monteringger) sit above terrain. Evaluate each at the caller's own world
+  // position (up * atR) so the walker and vehicles are resolved at their own
+  // spot; the walker passes its real radius so this equals walk.player.
+  if (structureFns.length) {
+    _wp.copy(up).multiplyScalar(atR != null ? atR : r);
+    for (let i = 0; i < structureFns.length; i++) {
+      const sr = structureFns[i].floor(_wp);
+      if (sr > r) r = sr;
+    }
   }
   return r;
 }
@@ -184,13 +199,15 @@ export function stepWalk(dt) {
     }
   }
 
-  // --- building wall push-out (doorways stay open) ---
-  if (structureFn) structureFn.wall(walk.player);
+  // --- structure wall push-out (doorways stay open; trail edges hold) ---
+  for (let i = 0; i < structureFns.length; i++) {
+    if (structureFns[i].wall) structureFns[i].wall(walk.player);
+  }
 
   // --- recompute up / radius after horizontal step ---
   _up.copy(walk.player).normalize();
   r = walk.player.length();
-  const surfaceR = floorRadius(planet, _up);
+  const surfaceR = floorRadius(planet, _up, r);
   depth = waterDepth(planet, _up);
   walk.swimming = depth > C.WALK_SWIM_DEPTH && r <= planet.seaR + 0.05;
 
