@@ -14,6 +14,7 @@ import { buildVehicles, vehicleActive, exitVehicle, updateVehiclePrompt, vehicle
 import { buildFoliage } from './foliage.js';
 import { buildTerrainDetail } from './terrainDetail.js';
 import { initBiomeCivs } from './biomeCivs.js';
+import { buildMonteRingger } from './monteringger.js';
 import { spawnAt } from './walk.js';
 import {
   updateInteract, fireInteract, currentFocus, clearInteractables,
@@ -28,6 +29,7 @@ let dressing = null;
 let foliage = null;
 let terrainDetail = null;
 let biomeCivs = null;
+let monteRingger = null;
 let zones = null;
 let tm = null;
 let ctx = null;
@@ -86,6 +88,15 @@ export async function buildWorld(context) {
   // Their compass markers guide the player out to them across the wilds.
   biomeCivs = initBiomeCivs(ctx.planet, { notify: showHint });
   compassEntries = compassEntries.concat(biomeCivs.compassEntries());
+
+  // Mont Le Ringger — a tall, arduous mountain hike out on the plains, placed
+  // clear of the biomeCivs settlements. Its trail carries the walker up via a
+  // structure resolver (composed with the town's); its flag waves each frame.
+  monteRingger = buildMonteRingger(ctx, tm, { avoidDirs: biomeCivs.sites.map((s) => s.dir) });
+  if (monteRingger) {
+    compassEntries = compassEntries.concat(monteRingger.compass);
+    zoneUpdaters = zoneUpdaters.concat(monteRingger.updaters);
+  }
 
   await buildGallery(ctx, zones, tm);
   window.__tm = tm; // gallery grabs this to lazily register interior textures

@@ -19,7 +19,7 @@ import { createTown } from './city/town.js';
 import { createOutpost } from './city/outpost.js';
 import { createCrowd } from './city/aliens.js';
 import { createEconomy, SCHEMA } from './economy.js';
-import { setStructureResolver, addCollider } from './walk.js';
+import { addStructureResolver, removeStructureResolver, addCollider } from './walk.js';
 import { addInteractable } from './interact.js';
 import { showCard } from './hud.js';
 
@@ -245,7 +245,8 @@ export function initBiomeCivs(planet, opts = {}) {
         return gen.localToWorld(_sp.clone()).length();
       },
     };
-    setStructureResolver(resolver);
+    st._resolver = resolver;
+    addStructureResolver(resolver);
   }
 
   // ---- per-frame -----------------------------------------------------------
@@ -289,8 +290,11 @@ export function initBiomeCivs(planet, opts = {}) {
   }
 
   function dispose() {
-    setStructureResolver(null);
-    for (const st of settlements) { st.crowd.dispose(); st.gen.dispose(); if (st.gen.group.parent) st.gen.group.parent.remove(st.gen.group); }
+    for (const st of settlements) {
+      if (st._resolver) removeStructureResolver(st._resolver);
+      st.crowd.dispose(); st.gen.dispose();
+      if (st.gen.group.parent) st.gen.group.parent.remove(st.gen.group);
+    }
     settlements.length = 0;
   }
 
