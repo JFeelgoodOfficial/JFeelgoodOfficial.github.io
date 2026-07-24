@@ -224,12 +224,34 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
     const w = new THREE.Vector3();
     for (let i = 0; i <= NR; i++) {
       const s = i / NR;                          // 0 base -> 1 apex
-      const cap = s > 0.9 ? smoothCap(s) : 1;    // flatten the top for the cairn
+      let spire = 1;
+
+if (s > 0.82)
+{
+    const t = (s - 0.82) / 0.18;
+
+    spire =
+        1.0 -
+        t*0.75 +
+        fbm(nx*10, ny*10, s*20,4)*0.08;
+}    // flatten the top for the cairn
       for (let j = 0; j <= NS; j++) {
         const a = (j / NS) * Math.PI * 2;
         const rough = fbm(Math.cos(a) * 1.7 + 5, Math.sin(a) * 1.7 - 3, s * 3.2, 4);
         const edge = Math.sin(s * Math.PI);      // fade noise out at base & apex
-        const rr = R_BASE * (1 - s) * cap * (1 + rough * 0.10 * edge);
+        const ridge =
+    Math.abs(fbm(nx*2, ny*2, s*2, 5));
+
+const erosion =
+    fbm(nx*6, ny*6, s*8, 3) * 0.12;
+
+const cliffs =
+    Math.pow(ridge, 2.5);
+
+const radius =
+    R_BASE *
+    (1 - s) *
+    (1.0 - cliffs * 0.45 + erosion);
         const lift = H_SUMMIT * (s * cap + (1 - cap)) + rough * 9 * edge;
         const lx = Math.cos(a) * rr, lz = Math.sin(a) * rr;
         worldOf(lx, lz, Math.max(lift, 0), w);
