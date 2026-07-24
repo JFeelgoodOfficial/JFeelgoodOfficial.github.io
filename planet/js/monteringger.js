@@ -1,5 +1,24 @@
 // Mont Le Ringger — a walkable mountain hike in the PLAINS biome.
-// ... (imports and doc comment unchanged) ...
+//
+// This replaces an old, orphaned flat-world "Mountain Hike 3D" prototype that
+// once lived in this file. The trail/summit ideas survive; the world does not:
+// everything here is projected onto the live sphere planet and wired into the
+// same systems the rest of the surface content uses (walk.js floor resolvers,
+// interact.js, hud.js, the compass).
+//
+// The peak is a tall, steep rocky cone. A single spiral switchback trail is the
+// ONLY walkable route up: the mountain registers a structure resolver whose
+// floor() lifts the walker only inside a narrow trail corridor and returns
+// -Infinity everywhere else on the cone, so stepping off the trail drops you
+// back to the flattened base — the cliffs cannot be climbed. A big trailhead
+// sign reads "MONT LE RINGGER"; the summit carries a stone cairn, a fluttering
+// flag, and an interactable that opens the view out over the whole world.
+//
+// Local coordinates: a fixed tangent frame at the peak axis `mDir` (up=mDir,
+// plus `east`,`north` from frameAt). A local point is (lx along east, lz along
+// north, lift = radial height above baseR). The forward/inverse maps below are
+// exact inverses AND place meshes on real sphere directions (radius baseR+lift),
+// so the visible cone/ribbon and the invisible collision floor never drift.
 
 import * as THREE from 'three';
 import { C, LANDING_DIR } from './config.js';
@@ -9,16 +28,18 @@ import { addStructureResolver, removeStructureResolver, addPad, teleportTo } fro
 import { addInteractable } from './interact.js';
 import { showCard } from './hud.js';
 
-const R_BASE = 135;
-const H_SUMMIT = 185;
-const TURNS = 6;
-const TRAIL_HW = 6.5;
-const SHRINK = 0.9;
-const RIM_MARGIN = 5;
-const RAMP_GATE = 3;
+// --- proportions (grounded in RADIUS=800, TERRAIN_HEIGHT=50, WALK_SPEED=7) ---
+const R_BASE = 135;    // footprint radius (tangent world units)
+const H_SUMMIT = 185;  // summit lift above the base — dwarfs natural peaks (~50)
+const TURNS = 6;       // spiral switchback loops
+const TRAIL_HW = 6.5;  // trail half-width — comfortably walkable at WALK_SPEED 7
+const SHRINK = 0.9;    // trail radius shrinks R_BASE -> R_BASE*0.1 at the summit
+const RIM_MARGIN = 5;  // beyond R_BASE + this, you're off the mountain
+const RAMP_GATE = 3;   // only clamp to the trail once this far up (seamless base)
 
 function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 
+// --- deterministic value-noise fbm (seeded per mountain, for rocky faces) ----
 function makeNoise(seed) {
   const s = (seed >>> 0) * 1e-4 + 1.0;
   const fract = (x) => x - Math.floor(x);
@@ -51,9 +72,12 @@ function hashDir(d) {
           Math.imul((d.z * 7027) | 0, 0xc2b2ae35)) >>> 0;
 }
 
+// Pick a strong plains site in a reachable band, clear of spawn and the given
+// avoid directions (the biomeCivs settlements). Mirrors biomeCivs.scanSites.
 function scanPlainsSite(planet, avoidDirs) {
   const spawn = LANDING_DIR.clone().normalize();
   const N = 6000, ga = Math.PI * (3 - Math.sqrt(5)), d = new THREE.Vector3();
+  // three passes, relaxing the plains-weight bar so a site is always found
   for (const minW of [0.55, 0.4, 0.0]) {
     let best = null;
     for (let i = 0; i < N; i++) {
@@ -61,11 +85,11 @@ function scanPlainsSite(planet, avoidDirs) {
       const rr = Math.sqrt(Math.max(0, 1 - y * y));
       const th = ga * i;
       d.set(Math.cos(th) * rr, y, Math.sin(th) * rr);
-      if (Math.abs(d.y) > 0.7) continue;
+      if (Math.abs(d.y) > 0.7) continue;              // off the poles
       const g = planet.groundAtLocal(d);
-      if (g < 4) continue;
+      if (g < 4) continue;                            // dry land
       const dist = Math.acos(clamp(d.dot(spawn), -1, 1)) * planet.radius;
-      if (dist < 320 || dist > 820) continue;
+      if (dist < 320 || dist > 820) continue;         // reachable, clear of spawn
       const b = biomeAt(d);
       if (b.name !== 'plains' || b.plains < minW) continue;
       let far = true;
@@ -81,88 +105,45 @@ function scanPlainsSite(planet, avoidDirs) {
   return null;
 }
 
-// --- palette for the height/slope color blend -----------------------------
-const COL_GRASS = new THREE.Color(0x4a6b34);
-const COL_DIRT  = new THREE.Color(0x6e5a3f);
-const COL_SCREE = new THREE.Color(0x8a8478);
-const COL_ROCK  = new THREE.Color(0x6f6a63);
-const COL_SNOW  = new THREE.Color(0xf3f2ee);
-const COL_LICHEN = new THREE.Color(0x9aa15a);
-
-// Blend grass -> dirt/scree -> bare rock -> snow by normalized height (s) and
-// slope steepness (slope, 0 = flat, 1 = vertical), with noise-driven variation
-// so bands aren't uniform rings. Returns a THREE.Color (mutated, reusable).
-const _tmpA = new THREE.Color(), _tmpB = new THREE.Color();
-function terrainColor(out, s, slope, n, patchN) {
-  // base elevation blend
-  if (s < 0.28) {
-    const t = clamp(s / 0.28, 0, 1);
-    out.copy(COL_GRASS).lerp(COL_DIRT, t);
-  } else if (s < 0.62) {
-    const t = clamp((s - 0.28) / 0.34, 0, 1);
-    out.copy(COL_DIRT).lerp(COL_SCREE, t);
-  } else if (s < 0.88) {
-    const t = clamp((s - 0.62) / 0.26, 0, 1);
-    out.copy(COL_SCREE).lerp(COL_ROCK, t);
-  } else {
-    const t = clamp((s - 0.88) / 0.12, 0, 1);
-    out.copy(COL_ROCK).lerp(COL_SNOW, t);
-  }
-  // steep faces stay bare rock even at low/mid elevation (talus, cliff bands)
-  if (slope > 0.45 && s < 0.88) {
-    const rockPull = clamp((slope - 0.45) / 0.4, 0, 1);
-    out.lerp(COL_ROCK, rockPull * 0.85);
-  }
-  // snow only settles in shadowed / low-slope crevices near the summit
-  if (s > 0.7) {
-    const settle = clamp(1 - slope * 1.6, 0, 1) * clamp((s - 0.7) / 0.3, 0, 1);
-    out.lerp(COL_SNOW, settle * 0.9);
-  }
-  // lichen speckle on mid-elevation boulders/rock faces
-  if (s > 0.15 && s < 0.7 && slope > 0.3) {
-    const speck = clamp(patchN * 0.5 + 0.5, 0, 1);
-    if (speck > 0.72) out.lerp(COL_LICHEN, (speck - 0.72) * 2.2);
-  }
-  // fine noise variation so it doesn't look flat-shaded/banded
-  const wob = 1 + n * 0.08;
-  out.r = clamp(out.r * wob, 0, 1);
-  out.g = clamp(out.g * wob, 0, 1);
-  out.b = clamp(out.b * wob, 0, 1);
-  return out;
-}
-
+// ===========================================================================
 export function buildMonteRingger(ctx, tm, opts = {}) {
   const { planet, scene } = ctx;
   const avoidDirs = (opts.avoidDirs || []).map((a) => (a.clone ? a.clone().normalize() : new THREE.Vector3().fromArray(a).normalize()));
 
   const site = scanPlainsSite(planet, avoidDirs);
-  if (!site) return null;
+  if (!site) return null; // no dry plains anywhere — nothing to build
 
+  // --- fixed tangent frame at the peak axis ---
   const mDir = site.dir.clone().normalize();
   const up = new THREE.Vector3(), north = new THREE.Vector3(), east = new THREE.Vector3();
   frameAt(mDir, up, north, east);
   const baseR = planet.radius + planet.groundAtLocal(mDir);
   const seed = hashDir(mDir);
   const fbm = makeNoise(seed);
-  const fbmDetail = makeNoise(seed ^ 0x51ed270b); // second octave set for lichen/AO speckle
 
+  // Flatten a disc of terrain to baseR so the cone base sits flush (no seam) and
+  // off-trail ground around the mountain is level. addPad only ever raises.
   addPad(mDir, (R_BASE + RIM_MARGIN) / planet.radius, baseR, 0.18);
 
+  // --- local <-> world maps (exact inverses; place on real sphere dirs) ------
+  // world = normalize(mDir*baseR + east*lx + north*lz) * (baseR + lift)
   const _d = new THREE.Vector3();
   function worldOf(lx, lz, lift, out) {
     _d.copy(mDir).multiplyScalar(baseR).addScaledVector(east, lx).addScaledVector(north, lz).normalize();
     return out.copy(_d).multiplyScalar(baseR + lift);
   }
+  // inverse: lx = baseR·(P·east)/(P·mDir), lz = baseR·(P·north)/(P·mDir), lift = |P|-baseR
   const _L = { lx: 0, lz: 0, lift: 0 };
   function localOf(P) {
     const pm = P.dot(mDir);
-    if (pm < baseR * 0.5) { _L.lift = -1e9; return false; }
+    if (pm < baseR * 0.5) { _L.lift = -1e9; return false; } // far side / below — bail
     _L.lx = baseR * P.dot(east) / pm;
     _L.lz = baseR * P.dot(north) / pm;
     _L.lift = P.length() - baseR;
     return true;
   }
 
+  // --- spiral switchback trail centerline (local x,z + ramp height) ----------
   function radAt(t) { return R_BASE * (1 - SHRINK * t); }
   function angleAt(t) { return t * Math.PI * 2 * TURNS; }
   const _c = { x: 0, z: 0, h: 0 };
@@ -176,6 +157,9 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
     const cx = Math.cos(a) * r, cz = Math.sin(a) * r;
     return Math.hypot(lx - cx, lz - cz);
   }
+  // Closest centerline parameter: the spiral crosses polar angle φ once per loop,
+  // so enumerate one candidate per turn and refine — correct even where the
+  // switchbacks stack directly above one another.
   function closestT(lx, lz) {
     const phi = Math.atan2(lz, lx);
     let bestT = 0, bestD = Infinity;
@@ -194,77 +178,62 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
     return bestT;
   }
 
+  // --- the structure resolver: floor carries you up the trail, wall holds you on it
   const _n = new THREE.Vector3();
   const resolver = {
     floor(P) {
       if (!localOf(P)) return -Infinity;
       const d = Math.hypot(_L.lx, _L.lz);
-      if (d > R_BASE + RIM_MARGIN) return -Infinity;
+      if (d > R_BASE + RIM_MARGIN) return -Infinity;      // off the mountain
       const t = closestT(_L.lx, _L.lz);
       centerAt(t, _c);
       const off = Math.hypot(_L.lx - _c.x, _L.lz - _c.z);
-      if (off > TRAIL_HW) return -Infinity;
-      return baseR + _c.h;
+      if (off > TRAIL_HW) return -Infinity;               // off the ramp -> cliff (falls to base)
+      return baseR + _c.h;                                // ride the ramp
     },
     wall(P) {
       if (!localOf(P)) return;
       const d = Math.hypot(_L.lx, _L.lz);
-      if (d > R_BASE + RIM_MARGIN || _L.lift < RAMP_GATE) return;
+      if (d > R_BASE + RIM_MARGIN || _L.lift < RAMP_GATE) return; // free to roam at the base
       const t = closestT(_L.lx, _L.lz);
       centerAt(t, _c);
       const ex = _L.lx - _c.x, ez = _L.lz - _c.z, off = Math.hypot(ex, ez);
       if (off <= TRAIL_HW || off < 1e-4) return;
       const push = off - TRAIL_HW;
       _n.copy(east).multiplyScalar(-ex / off).addScaledVector(north, -ez / off);
-      P.addScaledVector(_n, push);
+      P.addScaledVector(_n, push);                        // nudge back toward the centerline
     },
   };
   addStructureResolver(resolver);
 
+  // --- meshes ---------------------------------------------------------------
   const group = new THREE.Group();
   scene.add(group);
 
-  // Vertex-colored materials replace the flat rock/rockLow materials so the
-  // cone and ribbon read as real elevation-banded terrain rather than two
-  // solid colors. `vertexColors: true` lets per-vertex height/slope/noise
-  // blending (terrainColor) drive the surface look.
-  const groundMat = new THREE.MeshStandardMaterial({
-    vertexColors: true, roughness: 0.95, metalness: 0.03, flatShading: false,
-  });
-  const trailMat = new THREE.MeshStandardMaterial({
-    vertexColors: true, roughness: 0.98, metalness: 0.02, flatShading: false,
-  });
+  const rock = new THREE.MeshStandardMaterial({ color: C.PALETTE.mid, roughness: 0.97, metalness: 0.04, flatShading: true });
+  const rockLow = new THREE.MeshStandardMaterial({ color: C.PALETTE.low, roughness: 0.95, metalness: 0.05, flatShading: true });
 
   group.add(buildCone());
   group.add(buildTrailRibbon());
-  group.add(buildScatterRocks());
-  group.add(buildRimLightShell());
 
-  // rocky cone body: rings from the base rim up to a jagged, asymmetric
-  // summit spire (no flat cap), with height/slope-driven vertex color and a
-  // second noise pass darkened into crevices to fake ambient occlusion.
+  // rocky cone body: rings from the base rim up to a flat summit cap, displaced
+  // by fbm so the faces read as broken rock. Steep by construction (H/R ~ 1.4).
   function buildCone() {
-    const NR = 56, NS = 140;
-    const pos = [], idx = [], col = [];
+    const NR = 44, NS = 120;
+    const pos = [], idx = [];
     const w = new THREE.Vector3();
-    const heights = new Float32Array((NR + 1) * (NS + 1));
     for (let i = 0; i <= NR; i++) {
-      const s = i / NR;
-      // asymmetric jagged spire: taper hard near the top, break symmetry with
-      // a second noise sample so the summit isn't a smooth cone point.
-      const spireSharp = s > 0.82 ? Math.pow((s - 0.82) / 0.18, 1.6) : 0;
+      const s = i / NR;                          // 0 base -> 1 apex
+      const cap = s > 0.9 ? smoothCap(s) : 1;    // flatten the top for the cairn
       for (let j = 0; j <= NS; j++) {
         const a = (j / NS) * Math.PI * 2;
         const rough = fbm(Math.cos(a) * 1.7 + 5, Math.sin(a) * 1.7 - 3, s * 3.2, 4);
-        const jag = fbm(Math.cos(a) * 3.1 - 2, Math.sin(a) * 3.1 + 7, s * 5.5, 3);
-        const edge = Math.sin(s * Math.PI);
-        const capShrink = 1 - spireSharp * 0.94; // pinch toward a ragged point, not a disc
-        const rr = R_BASE * (1 - s) * capShrink * (1 + rough * 0.12 * edge + jag * 0.05 * spireSharp);
-        const lift = H_SUMMIT * s + rough * 9 * edge + jag * 14 * spireSharp;
+        const edge = Math.sin(s * Math.PI);      // fade noise out at base & apex
+        const rr = R_BASE * (1 - s) * cap * (1 + rough * 0.10 * edge);
+        const lift = H_SUMMIT * (s * cap + (1 - cap)) + rough * 9 * edge;
         const lx = Math.cos(a) * rr, lz = Math.sin(a) * rr;
         worldOf(lx, lz, Math.max(lift, 0), w);
         pos.push(w.x, w.y, w.z);
-        heights[i * (NS + 1) + j] = Math.max(lift, 0);
       }
     }
     const row = NS + 1;
@@ -274,39 +243,20 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
         idx.push(a, cc, b, b, cc, dd);
       }
     }
-    // slope estimate from neighboring ring-height deltas + color pass
-    for (let i = 0; i <= NR; i++) {
-      const s = i / NR;
-      const i0 = Math.max(0, i - 1), i1 = Math.min(NR, i + 1);
-      for (let j = 0; j <= NS; j++) {
-        const h0 = heights[i0 * row + j], h1 = heights[i1 * row + j];
-        const dh = Math.abs(h1 - h0);
-        const slope = clamp(dh / (H_SUMMIT / NR * 2 + 1e-3) * 0.35, 0, 1);
-        const a = (j / NS) * Math.PI * 2;
-        const patchN = fbmDetail(Math.cos(a) * 4.2, Math.sin(a) * 4.2, s * 6.1, 3);
-        const aoN = fbmDetail(Math.cos(a) * 9.5 + 1, Math.sin(a) * 9.5 - 4, s * 12, 2);
-        terrainColor(_tmpA, s, slope, patchN, patchN);
-        // darken into simulated crevices where the AO noise dips low
-        const ao = clamp(1 - Math.max(0, -aoN) * 0.6, 0.55, 1);
-        _tmpA.multiplyScalar(ao);
-        col.push(_tmpA.r, _tmpA.g, _tmpA.b);
-      }
-    }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     geo.setIndex(idx);
     geo.computeVertexNormals();
-    const m = new THREE.Mesh(geo, groundMat);
+    const m = new THREE.Mesh(geo, rock);
     m.material.polygonOffset = true; m.material.polygonOffsetFactor = 1; m.material.polygonOffsetUnits = 1;
     return m;
   }
+  function smoothCap(s) { const t = clamp((1 - s) / 0.1, 0, 1); return 0.12 + 0.88 * (t * t * (3 - 2 * t)); }
 
-  // the walkable trail ribbon, colored dirt/scree by elevation to match the
-  // surrounding cone rather than a single flat tone.
+  // the walkable trail, a ribbon laid exactly on the collision centerline
   function buildTrailRibbon() {
     const NT = 360;
-    const pos = [], idx = [], col = [];
+    const pos = [], idx = [];
     const a = { x: 0, z: 0, h: 0 }, b = { x: 0, z: 0, h: 0 };
     const wl = new THREE.Vector3(), wr = new THREE.Vector3();
     for (let i = 0; i <= NT; i++) {
@@ -315,15 +265,10 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
       centerAt(Math.min(1, t + 1 / NT), b);
       let tx = b.x - a.x, tz = b.z - a.z;
       const tl = Math.hypot(tx, tz) || 1; tx /= tl; tz /= tl;
-      const nx = -tz, nz = tx;
+      const nx = -tz, nz = tx;                   // left normal in the local plane
       worldOf(a.x + nx * TRAIL_HW, a.z + nz * TRAIL_HW, a.h + 0.25, wl);
       worldOf(a.x - nx * TRAIL_HW, a.z - nz * TRAIL_HW, a.h + 0.25, wr);
       pos.push(wl.x, wl.y, wl.z, wr.x, wr.y, wr.z);
-      const s = t;
-      // trail tread stays worn dirt/scree longer than the surrounding slope
-      terrainColor(_tmpB, s * 0.85, 0.15, fbmDetail(a.x * 0.05, a.z * 0.05, s * 4, 2), 0);
-      _tmpB.multiplyScalar(0.92); // slightly darker, packed-earth tread
-      col.push(_tmpB.r, _tmpB.g, _tmpB.b, _tmpB.r, _tmpB.g, _tmpB.b);
     }
     for (let i = 0; i < NT; i++) {
       const a0 = i * 2, b0 = a0 + 1, c0 = a0 + 2, d0 = a0 + 3;
@@ -331,102 +276,14 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     geo.setIndex(idx);
     geo.computeVertexNormals();
-    const m = new THREE.Mesh(geo, trailMat);
+    const m = new THREE.Mesh(geo, rockLow);
     m.renderOrder = 1;
     return m;
   }
 
-  // loose granite boulders and lichen-covered rocks scattered along the trail
-  // edges in the meadow band (low elevation), thinning out higher up.
-  function buildScatterRocks() {
-    const g = new THREE.Group();
-    const boulderMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0.04 });
-    const NB = 140;
-    const posArr = [], colArr = [], idxArr = [];
-    let vOff = 0;
-    for (let i = 0; i < NB; i++) {
-      const t = (i / NB) * 0.55; // only along the lower/mid trail (meadow -> talus)
-      centerAt(t, _c);
-      const a = angleAt(t);
-      const side = (i % 2 === 0) ? 1 : -1;
-      const spread = TRAIL_HW + 3 + fbm(i * 3.1, 0, 0, 2) * 6;
-      const nx = -Math.sin(a), nz = Math.cos(a);
-      const lx = _c.x + nx * spread * side;
-      const lz = _c.z + nz * spread * side;
-      const size = 1.1 + Math.abs(fbm(i * 7.7, 2, 0, 2)) * 1.8;
-      const geo = new THREE.DodecahedronGeometry(size, 0);
-      const p = geo.attributes.position;
-      const lit = fbmDetail(lx * 0.08, lz * 0.08, t * 3, 2);
-      const s = t * 1.05;
-      terrainColor(_tmpA, s, 0.55, lit, lit);
-      if (lit > 0.35) _tmpA.lerp(COL_LICHEN, 0.35); // extra lichen bias on scatter rocks
-      for (let k = 0; k < p.count; k++) {
-        worldOf(lx + p.getX(k), lz + p.getY(k) + size * 0.4, t * H_SUMMIT + p.getZ(k), _d);
-        posArr.push(_d.x, _d.y, _d.z);
-        colArr.push(_tmpA.r, _tmpA.g, _tmpA.b);
-      }
-      const gi = geo.index.array;
-      for (let k = 0; k < gi.length; k++) idxArr.push(gi[k] + vOff);
-      vOff += p.count;
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(posArr, 3));
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(colArr, 3));
-    geo.setIndex(idxArr);
-    geo.computeVertexNormals();
-    g.add(new THREE.Mesh(geo, boulderMat));
-    return g;
-  }
-
-  // Thin, mostly-transparent shell offset outward from the cone surface,
-  // additive-blended, that fakes a warm-sunward / cool-shadow fresnel rim
-  // light (like the golden-hour east face / blue west face in the sunrise
-  // reference) without touching the scene's actual directional light.
-  function buildRimLightShell() {
-    const sunDir = east.clone().add(up.clone().multiplyScalar(0.3)).normalize(); // approx sunward
-    const mat = new THREE.ShaderMaterial({
-      uniforms: { sunDir: { value: sunDir } },
-      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.FrontSide,
-      vertexShader: `
-        varying vec3 vN; varying vec3 vW;
-        void main() {
-          vN = normalize(normalMatrix * normal);
-          vW = normalize((modelMatrix * vec4(position,1.0)).xyz);
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
-        }`,
-      fragmentShader: `
-        uniform vec3 sunDir;
-        varying vec3 vN; varying vec3 vW;
-        void main() {
-          float fres = pow(1.0 - max(dot(normalize(vN), vec3(0.0,0.0,1.0)), 0.0), 2.2);
-          float warm = clamp(dot(vW, sunDir), -1.0, 1.0) * 0.5 + 0.5;
-          vec3 warmCol = vec3(1.0, 0.72, 0.38);
-          vec3 coolCol = vec3(0.45, 0.58, 0.85);
-          vec3 rim = mix(coolCol, warmCol, warm);
-          gl_FragColor = vec4(rim, fres * 0.35);
-        }`,
-    });
-    const geo = new THREE.SphereGeometry(1, 24, 16); // reused as a generic shell, scaled per-vertex below
-    // Build the shell by duplicating the cone silhouette slightly enlarged is
-    // overkill; instead use a simple enlarged cone proxy for the rim pass.
-    const proxy = new THREE.ConeGeometry(R_BASE * 1.02, H_SUMMIT * 1.02, 48, 1, true);
-    proxy.translate(0, H_SUMMIT * 0.51, 0);
-    proxy.rotateX(Math.PI); // cone apex up by default points -Y; flip to +Y
-    const m = new THREE.Mesh(proxy, mat);
-    // orient/position the proxy onto the real summit axis
-    placeLocalGroup(m, 0, 0, 0);
-    return m;
-  }
-  function placeLocalGroup(obj, lx, lz, lift) {
-    worldOf(lx, lz, lift, _d);
-    obj.position.copy(_d);
-    obj.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), mDir);
-  }
-
-  // --- trailhead sign (unchanged) --------------------------------------------
+  // --- trailhead sign: big "MONT LE RINGGER" at the foot of the trail --------
   const _pu = new THREE.Vector3(), _pf = new THREE.Vector3(), _pr = new THREE.Vector3(), _pb = new THREE.Matrix4();
   const _pos = new THREE.Vector3();
   function placeLocal(g, lx, lz, lift, faceDir) {
@@ -464,10 +321,11 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
   cross.position.set(0, 9.4, 0); signGroup.add(cross);
   const panel = makeSign('MONT LE RINGGER');
   panel.position.set(0, 7.2, 0.35); signGroup.add(panel);
+  // stand the sign just outside the trailhead (t=0 is at angle 0 -> +east rim)
   placeLocal(signGroup, R_BASE + 2.5, 0, 0, LANDING_DIR);
   group.add(signGroup);
 
-  // --- summit cairn + fluttering flag (unchanged) -----------------------------
+  // --- summit cairn + fluttering flag ---------------------------------------
   centerAt(1, _c);
   const summitGroup = new THREE.Group();
   const cairnMat = new THREE.MeshStandardMaterial({ color: C.PALETTE.high, roughness: 0.9, metalness: 0.05, flatShading: true });
@@ -489,7 +347,7 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
   placeLocal(summitGroup, _c.x, _c.z, H_SUMMIT, LANDING_DIR);
   group.add(summitGroup);
 
-  // --- interactions + compass (unchanged) -------------------------------------
+  // --- interactions + compass -----------------------------------------------
   const summitWorld = worldOf(_c.x, _c.z, H_SUMMIT, new THREE.Vector3());
   addInteractable({
     pos: summitWorld.clone(), radius: 8,
@@ -521,6 +379,7 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
 
   const compass = [{ name: 'Mont Le Ringger', pos: summitWorld.clone().normalize().multiplyScalar(baseR + H_SUMMIT + 8) }];
 
+  // fluttering flag
   function flagWave(dt, t) { flag.rotation.y = Math.sin(t * 2) * 0.35; flag.rotation.z = Math.sin(t * 3.3) * 0.06; }
 
   function dispose() {
@@ -539,9 +398,12 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
       base: () => teleportTo(planet, worldOf(R_BASE + 2.5, 0, 0, new THREE.Vector3()).normalize()),
       summit: () => teleportTo(planet, summitWorld.clone().normalize()),
       floorAt: (arr) => resolver.floor(new THREE.Vector3().fromArray(arr)),
+      // self-check: floor invariants along the trail vs. off it (for tests).
+      // on-trail: centerline at t=0.5 (angle 0, radius radAt(0.5)); off-trail:
+      // angle 0 at a radius midway between two switchback arms (in the gap).
       probe: () => {
         const mid = centerAt(0.5, { x: 0, z: 0, h: 0 });
-        const gapR = (radAt(2 / TURNS) + radAt(3 / TURNS)) / 2;
+        const gapR = (radAt(2 / TURNS) + radAt(3 / TURNS)) / 2; // between arms k=2,3 at angle 0
         const on = resolver.floor(worldOf(mid.x, mid.z, mid.h, new THREE.Vector3()));
         const off = resolver.floor(worldOf(gapR, 0, mid.h, new THREE.Vector3()));
         const far = resolver.floor(LANDING_DIR.clone().multiplyScalar(baseR));
