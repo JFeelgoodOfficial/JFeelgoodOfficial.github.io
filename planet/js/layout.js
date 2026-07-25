@@ -36,6 +36,54 @@ export function frameAt(dir, up, north, east) {
   east.crossVectors(north, up).normalize();
 }
 
+// --- surface exclusions -----------------------------------------------------
+// A large structure that owns its own ground mesh (Mont Le Ringger) registers a
+// disc here: foliage.js refuses to scatter inside `block`, and terrainDetail.js
+// sinks its patch inside `sink` so the structure's mesh is the only visible
+// ground there. Chord distance against the base sphere, mirroring the
+// `inClearing` test dressing.js already uses for the spawn clearings.
+const _excl = [];
+const _ep = new THREE.Vector3();
+
+export function addSurfaceExclusion(dir, block, sink, feather = 26) {
+  const e = {
+    p: dir.clone().normalize().multiplyScalar(C.RADIUS),
+    b2: block * block,
+    s: sink,
+    f: feather,
+  };
+  _excl.push(e);
+  return e;
+}
+export function removeSurfaceExclusion(e) {
+  const i = _excl.indexOf(e);
+  if (i >= 0) _excl.splice(i, 1);
+}
+// True if scatter should be suppressed entirely at this direction.
+export function exclusionBlocks(dir) {
+  if (!_excl.length) return false;
+  _ep.copy(dir).multiplyScalar(C.RADIUS);
+  for (let i = 0; i < _excl.length; i++) {
+    if (_ep.distanceToSquared(_excl[i].p) < _excl[i].b2) return true;
+  }
+  return false;
+}
+// 0..1 — how far to sink the detail patch here (1 = fully under the structure).
+export function exclusionSink(dir) {
+  if (!_excl.length) return 0;
+  _ep.copy(dir).multiplyScalar(C.RADIUS);
+  let k = 0;
+  for (let i = 0; i < _excl.length; i++) {
+    const e = _excl[i];
+    const d = _ep.distanceTo(e.p);
+    if (d >= e.s) continue;
+    const t = Math.min(1, (e.s - d) / e.f);
+    const sm = t * t * (3 - 2 * t);
+    if (sm > k) k = sm;
+  }
+  return k;
+}
+
 // Resolve every zone in config to a direction (billboards is an array).
 export function resolveZones() {
   const z = {};

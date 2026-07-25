@@ -16,7 +16,7 @@ export const C = {
   SEA_LEVEL: 0.5, // terrain elevation below this is under water
   TERRAIN_HEIGHT: 50, // peak displacement above sea level
   ICE_LAT: 0.78, // |unit y| where polar ice begins
-  ATMO_SHELL: 1.25, // atmosphere shell radius, × planet radius
+  ATMO_SHELL: 1.42, // atmosphere shell radius, × planet radius (clears the 300-unit peak)
   CLOUD_COVER: 0.45,
 
   // --- palette: the site's gold-on-dark brand, as terrain bands ---

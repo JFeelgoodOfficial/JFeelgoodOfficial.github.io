@@ -14,6 +14,7 @@ import { C } from './config.js';
 import { groundHeight } from './terrain.js';
 import { biomeAt } from './biomes.js';
 import { mulberry32 } from './noise2.js';
+import { exclusionBlocks } from './layout.js';
 
 const WATER = C.WALK_WATER_LEVEL;
 const R_BIG = 420;     // scatter radius for trees / cacti / rocks (units)
@@ -205,6 +206,7 @@ export function buildFoliage(planet, spawnDir) {
       const h = heightAt(dir);
       if (h < WATER + 0.6) continue;
       if (!farFromSpawn(dir)) continue;
+      if (exclusionBlocks(dir)) continue;
       if (slope(ox, oz) > 0.5) continue;
       const b = biomeAt(dir);
 
@@ -245,6 +247,7 @@ export function buildFoliage(planet, spawnDir) {
       const h = heightAt(dir);
       if (h < WATER + 0.5 || h > 44) continue;
       if (!farFromSpawn(dir)) continue;
+      if (exclusionBlocks(dir)) continue;
       if (slope(ox, oz) > 0.45) continue;
       const b = biomeAt(dir);
       const cover = b.forest + b.plains * 0.7;
