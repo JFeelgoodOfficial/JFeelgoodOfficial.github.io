@@ -51,6 +51,7 @@ const SCREE_TAN = 0.70; // 35° — steeper than this off-trail and you slide
 const SCREE_RAMP = 0.35;
 const SLIDE_RATE = 24;  // units/s at full steepness (beats WALK_RUN_SPEED 14)
 const SUM_R = 4;        // standing perch at the very top (small: keep the spire)
+const HORN_R = 60;      // radius over which the central summit horn rises
 
 // Pad kept close to the mountain's own footprint: a wider pad would flatten a
 // broad ring of plains around it AND force the site scan to find an improbably
@@ -268,7 +269,7 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
   const SHOULDERS = [];
   for (let i = 0; i < 3; i++) {
     SHOULDERS.push({
-      u: 0.34 + rnd() * 0.24,                 // fraction of R_BASE
+      u: 0.46 + rnd() * 0.26,                 // fraction of R_BASE — flanking, not competing
       phi: rnd() * Math.PI * 2,
       h: 34 + rnd() * 30,
       sr: 26 + rnd() * 16,
@@ -319,7 +320,10 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
   // rather than "noisy dome".
   function mountainRelief(lx, lz, r, s) {
     const envRim = sm01(s / 0.16);                       // -> 0 at the rim: seamless
-    const amp = clamp(Math.pow(shape(s), 0.45) * 1.30, 0.06, 1.20);
+    // damped close to the axis: where the path is narrow, a +-70 crest beside it
+    // becomes a vertical wall. The teeth still supply the jagged crown up there.
+    const crownDamp = 0.22 + 0.78 * sm01(r / 95);
+    const amp = clamp(Math.pow(shape(s), 0.45) * 1.30, 0.06, 1.20) * crownDamp;
     const R1 = nz.ridged(lx * 0.016, lz * 0.016, 2.5, 5);      // broad ridgelines
     const R2 = nz.ridged(lx * 0.055, lz * 0.055, -7.1, 4);     // crags
     const med = nz.fbm(lx * 0.030, lz * 0.030, 5.1, 4);
@@ -347,17 +351,25 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
       + (Math.sin(t * 17.3 + 1.7) * 6.5 + Math.sin(t * 6.1 + 4.2) * 4.5) * w);
   }
   function angleAt(t) { return t * Math.PI * 2 * TURNS; }
-  // The bench sits at the mountain's OWN elevation for its radius, so the trail
-  // is cut into rock rather than carried on a viaduct — then over the last
-  // stretch it climbs the final scramble onto the true crown.
+  // The bench sits at the mountain's OWN smooth elevation for its radius —
+  // profile PLUS horn. Leaving the horn out here is what previously built the
+  // final stretch as a raised causeway standing 20-30 units proud of the rock,
+  // whose end face read as a wall across the path. Following the same smooth
+  // surface the rock uses keeps it a cut bench the whole way up.
+  // Sampled from the real rock along the centreline, smoothed so the walk isn't
+  // a roller-coaster, then forced monotonic so the hike always climbs. Built
+  // once in initTrail() below, after the summit height is known.
+  const TRAIL_N = 512;
+  const trailTable = new Float32Array(TRAIL_N + 1);
   function trailH(t) {
-    const base = H_TOP * shape(1 - radAt(t) / R_BASE);
-    return lerp(base, CROWN_H, sm01((t - 0.84) / 0.16));
+    const f = clamp(t, 0, 1) * TRAIL_N;
+    const i = Math.min(TRAIL_N - 1, f | 0);
+    return lerp(trailTable[i], trailTable[i + 1], f - i);
   }
-  // Path width tapers to a narrow scramble near the top, so the last section
-  // doesn't bulldoze the summit spire flat.
-  function hwAt(t) { return lerp(TRAIL_HW, 2.8, sm01((t - 0.80) / 0.20)); }
-  function carveAt(t) { return lerp(CARVE_OUT, 4.2, sm01((t - 0.80) / 0.20)); }
+  // Path narrows near the top so the scramble doesn't bulldoze the spire flat,
+  // but stays wide enough that the cut banks are slopes rather than walls.
+  function hwAt(t) { return lerp(TRAIL_HW, 4.0, sm01((t - 0.80) / 0.20)); }
+  function carveAt(t) { return lerp(CARVE_OUT, 7.0, sm01((t - 0.80) / 0.20)); }
   const _c = { x: 0, z: 0, h: 0 };
   function centerAt(t, out) {
     const a = angleAt(t), r = radAt(t);
@@ -390,14 +402,16 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
   // The mountain before the trail is cut into it, and before the teeth. Kept
   // separate so the summit height can be read without recursing through the
   // carve, and so the teeth can be measured against it.
-  let HORN = 34;  // central horn making the axis the unambiguous high point
+  // Spread over a wider radius than the original 30 so the final climb is a
+  // steep scramble rather than a near-vertical spike.
+  let HORN = 40;  // central horn making the axis the unambiguous high point
   function baseFieldH(lx, lz) {
     const r = Math.hypot(lx, lz);
     if (r >= R_BASE) return 0;                            // rim: exactly zero
     const s = 1 - r / R_BASE;
-    const horn = HORN * Math.pow(clamp(1 - r / 30, 0, 1), 1.35);
     const h = H_TOP * shape(s) + mountainRelief(lx, lz, r, s)
-            + shoulders(r, Math.atan2(lz, lx)) + horn;
+            + shoulders(r, Math.atan2(lz, lx))
+            + HORN * sm01(clamp(1 - r / HORN_R, 0, 1));
     return h < 0 ? 0 : h;
   }
   function rawH(lx, lz) {
@@ -422,17 +436,73 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
     const axis = baseFieldH(0, 0);
     const mx = maxOver(baseFieldH, 130, 6000);
     if (mx <= axis - 12) break;
-    HORN = Math.min(HORN + (mx - axis) + 14, 130);   // bounded: keeps the peak inside
+    HORN = Math.min(HORN + (mx - axis) + 14, 85);    // bounded: keeps the peak inside
   }                                                   // the atmosphere shell on any seed
   // Then cap every tooth so its apex stays below the crown.
   const SUM_X = 0, SUM_Z = 0;                             // the summit IS the axis
-  const CROWN_H = baseFieldH(0, 0);                       // teeth never reach the axis
+  const CROWN0 = baseFieldH(0, 0);                        // teeth never reach the axis
   for (const t of TEETH) {
     const tx = Math.cos(t.phi) * t.r, tz = Math.sin(t.phi) * t.r;
-    t.h = Math.min(t.h, CROWN_H - 6 - baseFieldH(tx, tz));
+    // measure the rock across the whole tooth footprint, not just its centre —
+    // the ground under one edge can sit well above the middle
+    let under = baseFieldH(tx, tz);
+    for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2;
+      under = Math.max(under, baseFieldH(tx + Math.cos(a) * t.rad * 0.6, tz + Math.sin(a) * t.rad * 0.6));
+    }
+    t.h = Math.min(t.h, CROWN0 - 8 - under);
     if (t.h < 3) t.h = 0;
   }
+  // The perch is the top of the mountain by construction: measure everything
+  // that survived and sit a hair above it, so no crest anywhere notches the view.
+  const CROWN_H = Math.max(CROWN0, maxOver(rawH, 110, 4000) + 1.0);
   const SUM_H = CROWN_H;
+
+  // Build the trail's height profile from the rock it is cut into, so the bench
+  // is a cut/fill of a few units rather than a causeway standing proud of the
+  // mountain — which is what put a wall across the path near the top.
+  (function initTrail() {
+    const raw = new Float32Array(TRAIL_N + 1);
+    for (let i = 0; i <= TRAIL_N; i++) {
+      const t = i / TRAIL_N, a = angleAt(t), r = radAt(t);
+      raw[i] = baseFieldH(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    // Barely smoothed: the grade limit below already guarantees a walkable
+    // climb, and every unit of smoothing lifts the bench above the gullies it
+    // crosses — which is fill, which is a causeway.
+    const W = 1;
+    const sm = new Float32Array(TRAIL_N + 1);
+    for (let i = 0; i <= TRAIL_N; i++) {
+      let s = 0, n = 0;
+      for (let k = -W; k <= W; k++) { s += raw[clamp(i + k, 0, TRAIL_N)]; n++; }
+      sm[i] = s / n;
+    }
+    // Step length along the path, for a grade limit in real units.
+    const ds = new Float32Array(TRAIL_N + 1);
+    for (let i = 1; i <= TRAIL_N; i++) {
+      const t0 = (i - 1) / TRAIL_N, t1 = i / TRAIL_N;
+      const a0 = angleAt(t0), r0 = radAt(t0), a1 = angleAt(t1), r1 = radAt(t1);
+      ds[i] = Math.hypot(Math.cos(a1) * r1 - Math.cos(a0) * r0, Math.sin(a1) * r1 - Math.sin(a0) * r0);
+    }
+    // Grade-limited LOWER envelope: the bench is pushed DOWN until it climbs no
+    // faster than RULING_GRADE. Taking the lower envelope means the path only
+    // ever cuts into rock and never fills above it — a cut leaves a bank beside
+    // you, whereas fill builds a causeway whose end face blocks the way.
+    const G = 1.15;
+    for (let i = 0; i <= TRAIL_N; i++) trailTable[i] = sm[i];
+    for (let i = 1; i <= TRAIL_N; i++) {
+      trailTable[i] = Math.min(trailTable[i], trailTable[i - 1] + G * ds[i]);
+    }
+    for (let i = TRAIL_N - 1; i >= 0; i--) {
+      trailTable[i] = Math.min(trailTable[i], trailTable[i + 1] + G * ds[i + 1]);
+    }
+    // arrive exactly on the crown so the perch meets the path with no step
+    const j0 = Math.floor(TRAIL_N * 0.90), h0 = trailTable[j0];
+    for (let i = j0; i <= TRAIL_N; i++) {
+      const u = (i - j0) / (TRAIL_N - j0);
+      trailTable[i] = Math.max(trailTable[i], lerp(h0, CROWN_H, sm01(u)));
+    }
+  }());
 
   // --- THE height function: mesh, collision and scatter all read this --------
   function surfaceH(lx, lz) {
@@ -1158,10 +1228,32 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
           baseR, expectMid: baseR + mid.h, on, off, far, moved,
           moved2: p2.distanceTo(p1), verts: vCount, tris: idx.length / 3,
           boulders: bCount[0] + bCount[1] + bCount[2], grass: gN, flowers: fN,
-          trailTop: trailH(1), crown: surfaceH(0, 0), rawCrown: CROWN_H,
+          trailTop: trailH(1), crown: surfaceH(0, 0), rawCrown: CROWN_H, horn: HORN,
+          baseMax: maxOver(baseFieldH, 130, 6000),
           // the summit must be reachable: standing floor at the axis, and the
           // path's top must arrive at the crown rather than stopping below it
           summitFloor: resolver.floor(worldOf(0, 0, CROWN_H, new THREE.Vector3())) - baseR,
+          // Walk the whole centreline: how far does the bench ever stand proud
+          // of the rock it is cut into (an embankment whose end face reads as a
+          // wall across the path), and what is its steepest grade?
+          ...(() => {
+            let embank = 0, grade = 0, prev = null, embankT = 0, gradeT = 0;
+            for (let i = 0; i <= 400; i++) {
+              const t = i / 400;
+              centerAt(t, _c);
+              const e = _c.h - baseFieldH(_c.x, _c.z);
+              if (e > embank) { embank = e; embankT = t; }
+              if (prev) {
+                const d = Math.hypot(_c.x - prev.x, _c.z - prev.z);
+                if (d > 1e-4) {
+                  const g = (_c.h - prev.h) / d;
+                  if (g > grade) { grade = g; gradeT = t; }
+                }
+              }
+              prev = { x: _c.x, z: _c.z, h: _c.h };
+            }
+            return { maxEmbankment: embank, maxGrade: grade, embankT, gradeT };
+          })(),
           // nothing on the mountain may out-top the perch
           maxAnywhere: (() => {
             let m = 0;
