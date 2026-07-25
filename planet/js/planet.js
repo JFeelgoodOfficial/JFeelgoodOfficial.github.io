@@ -183,9 +183,10 @@ export function updatePlanet(planet, t, camera, quality) {
 
   camera.getWorldPosition(_cam);
   const distR = _cam.length() / planet.radius; // planet centered at origin
-  // 1.55 keeps full detail up to ~440 units above the surface, so standing on
-  // Mont Le Ringger's summit doesn't pop the whole planet down an octave.
-  let oct = distR < 1.55 ? 6 : distR < 4 ? 4 : 3;
+  // 1.72 keeps full detail well above Mont Le Ringger's summit, so standing on
+  // the peak doesn't pop the whole planet down an octave — which would visibly
+  // reshape the world you climbed up to look at.
+  let oct = distR < 1.72 ? 6 : distR < 4 ? 4 : 3;
   if (quality === 'low' && oct > 4) oct = 4;
   planet.surfaceUniforms.uOct.value = oct;
 

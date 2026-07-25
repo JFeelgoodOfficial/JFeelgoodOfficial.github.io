@@ -42,7 +42,7 @@ const R_MESH = 320;     // mesh outer edge; the skirt tucks under the terrain
 const RIM_MARGIN = 8;   // floor()/wall() footprint cutoff
 const TURNS = 4;        // switchback loops
 const R_TRAIL0 = 178;   // trailhead radius (inside the rim, on the meadow)
-const R_TRAIL1 = 21;    // summit-platform radius
+const R_TRAIL1 = 5;     // the spiral closes on the axis, so the trail reaches the top
 const SHRINK = (R_TRAIL0 - R_TRAIL1) / R_TRAIL0;
 const TRAIL_HW = 6.5;   // bench half-width
 const CARVE_OUT = 9.5;  // cut/fill shoulder half-width (keep rock between arms)
@@ -50,7 +50,7 @@ const RAMP_GATE = 14;   // corridor clamp engages once the TRAIL is this high
 const SCREE_TAN = 0.70; // 35° — steeper than this off-trail and you slide
 const SCREE_RAMP = 0.35;
 const SLIDE_RATE = 24;  // units/s at full steepness (beats WALK_RUN_SPEED 14)
-const SUM_R = 8;        // summit platform radius
+const SUM_R = 4;        // standing perch at the very top (small: keep the spire)
 
 // Pad kept close to the mountain's own footprint: a wider pad would flatten a
 // broad ring of plains around it AND force the site scan to find an improbably
@@ -277,13 +277,15 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
   }
   // the crown: a cluster of sharp teeth. Linear falloff (not Gaussian) keeps the
   // tips genuinely pointed instead of rounding them into domes.
+  // Held off the axis (r >= 16) so they ring the true summit rather than
+  // out-topping it — you climb to the high point and they frame the view.
   const TEETH = [];
   for (let i = 0; i < 5; i++) {
     TEETH.push({
-      r: 5 + rnd() * 40,
+      r: 20 + rnd() * 28,
       phi: rnd() * Math.PI * 2,
-      h: 26 + rnd() * 44,
-      rad: 10 + rnd() * 13,
+      h: 20 + rnd() * 30,
+      rad: 8 + rnd() * 8,
     });
   }
   function wrapPi(a) { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; }
@@ -339,14 +341,23 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
   // wander a little the way a real cut trail does. closestT still inverts the
   // ANGLE analytically (unchanged) and refines numerically, so this is free.
   function radAt(t) {
-    return R_TRAIL0 * (1 - SHRINK * t)
-      + Math.sin(t * 17.3 + 1.7) * 6.5
-      + Math.sin(t * 6.1 + 4.2) * 4.5;
+    // wander fades out at the top so the final approach to the summit is stable
+    const w = 1 - sm01((t - 0.78) / 0.22);
+    return Math.max(3, R_TRAIL0 * (1 - SHRINK * t)
+      + (Math.sin(t * 17.3 + 1.7) * 6.5 + Math.sin(t * 6.1 + 4.2) * 4.5) * w);
   }
   function angleAt(t) { return t * Math.PI * 2 * TURNS; }
-  // The bench always sits at the mountain's OWN elevation for its radius, so the
-  // trail is cut into rock rather than carried on a viaduct.
-  function trailH(t) { return H_TOP * shape(1 - radAt(t) / R_BASE); }
+  // The bench sits at the mountain's OWN elevation for its radius, so the trail
+  // is cut into rock rather than carried on a viaduct — then over the last
+  // stretch it climbs the final scramble onto the true crown.
+  function trailH(t) {
+    const base = H_TOP * shape(1 - radAt(t) / R_BASE);
+    return lerp(base, CROWN_H, sm01((t - 0.84) / 0.16));
+  }
+  // Path width tapers to a narrow scramble near the top, so the last section
+  // doesn't bulldoze the summit spire flat.
+  function hwAt(t) { return lerp(TRAIL_HW, 2.8, sm01((t - 0.80) / 0.20)); }
+  function carveAt(t) { return lerp(CARVE_OUT, 4.2, sm01((t - 0.80) / 0.20)); }
   const _c = { x: 0, z: 0, h: 0 };
   function centerAt(t, out) {
     const a = angleAt(t), r = radAt(t);
@@ -376,28 +387,69 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
     return bestT;
   }
 
-  const SUM_X = radAt(1) * Math.cos(angleAt(1));
-  const SUM_Z = radAt(1) * Math.sin(angleAt(1));
-  const SUM_H = trailH(1);
+  // The mountain before the trail is cut into it, and before the teeth. Kept
+  // separate so the summit height can be read without recursing through the
+  // carve, and so the teeth can be measured against it.
+  let HORN = 34;  // central horn making the axis the unambiguous high point
+  function baseFieldH(lx, lz) {
+    const r = Math.hypot(lx, lz);
+    if (r >= R_BASE) return 0;                            // rim: exactly zero
+    const s = 1 - r / R_BASE;
+    const horn = HORN * Math.pow(clamp(1 - r / 30, 0, 1), 1.35);
+    const h = H_TOP * shape(s) + mountainRelief(lx, lz, r, s)
+            + shoulders(r, Math.atan2(lz, lx)) + horn;
+    return h < 0 ? 0 : h;
+  }
+  function rawH(lx, lz) {
+    const r = Math.hypot(lx, lz);
+    if (r >= R_BASE) return 0;
+    return baseFieldH(lx, lz) + teeth(lx, lz, r);
+  }
+
+  // Guarantee the axis really is the top. Ridged noise is free to throw a crest
+  // higher than the centre, so measure the summit region and raise the horn
+  // until the axis wins — otherwise you climb to the top and a crag blocks the
+  // view you came for.
+  function maxOver(fn, radius, n) {
+    let m = 0;
+    for (let i = 0; i < n; i++) {
+      const a = i * 2.39996, rr = Math.sqrt(i / n) * radius;
+      m = Math.max(m, fn(Math.cos(a) * rr, Math.sin(a) * rr));
+    }
+    return m;
+  }
+  for (let pass = 0; pass < 4; pass++) {
+    const axis = baseFieldH(0, 0);
+    const mx = maxOver(baseFieldH, 130, 6000);
+    if (mx <= axis - 12) break;
+    HORN = Math.min(HORN + (mx - axis) + 14, 130);   // bounded: keeps the peak inside
+  }                                                   // the atmosphere shell on any seed
+  // Then cap every tooth so its apex stays below the crown.
+  const SUM_X = 0, SUM_Z = 0;                             // the summit IS the axis
+  const CROWN_H = baseFieldH(0, 0);                       // teeth never reach the axis
+  for (const t of TEETH) {
+    const tx = Math.cos(t.phi) * t.r, tz = Math.sin(t.phi) * t.r;
+    t.h = Math.min(t.h, CROWN_H - 6 - baseFieldH(tx, tz));
+    if (t.h < 3) t.h = 0;
+  }
+  const SUM_H = CROWN_H;
 
   // --- THE height function: mesh, collision and scatter all read this --------
   function surfaceH(lx, lz) {
     const r = Math.hypot(lx, lz);
-    if (r >= R_BASE) return 0;                            // rim: exactly zero
-    const s = 1 - r / R_BASE;
-    let h = H_TOP * shape(s) + mountainRelief(lx, lz, r, s)
-          + shoulders(r, Math.atan2(lz, lx)) + teeth(lx, lz, r);
-    if (h < 0) h = 0;
+    if (r >= R_BASE) return 0;
+    let h = rawH(lx, lz);
     // bench carve: one symmetric lerp IS a cut-bank uphill + a fill shoulder
-    // downhill. Inside TRAIL_HW the weight is exactly 1, so the walkable surface
-    // is identically trailH and floor() can never disagree with the mesh.
+    // downhill. Inside the half-width the weight is exactly 1, so the walkable
+    // surface is identically trailH and floor() can never disagree with the mesh.
     const t = closestT(lx, lz);
     centerAt(t, _c);
     const off = Math.hypot(lx - _c.x, lz - _c.z);
-    if (off < CARVE_OUT) h = lerp(h, _c.h, 1 - sstep(TRAIL_HW, CARVE_OUT, off));
-    // summit platform last, so it wins over the teeth
-    const dS = Math.hypot(lx - SUM_X, lz - SUM_Z);
-    if (dS < SUM_R + 5) h = lerp(h, SUM_H, 1 - sstep(SUM_R, SUM_R + 5, dS));
+    const co = carveAt(t);
+    if (off < co) h = lerp(h, _c.h, 1 - sstep(hwAt(t), co, off));
+    // a small standing perch at the very top, level with the crown so the summit
+    // keeps its height — just flat enough to stand on
+    if (r < SUM_R + 4) h = lerp(h, SUM_H, 1 - sstep(SUM_R, SUM_R + 4, r));
     return h;
   }
 
@@ -449,12 +501,15 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
       const t = closestT(_L.lx, _L.lz);
       centerAt(t, _c);
       const ex = _L.lx - _c.x, ez = _L.lz - _c.z, off = Math.hypot(ex, ez);
-      if (off <= TRAIL_HW + 1.0) return;                  // on the bench: walk freely
+      // free to move around on the summit perch itself
+      if (Math.hypot(_L.lx, _L.lz) < SUM_R + 3) return;
+      const hw = hwAt(t);
+      if (off <= hw + 1.0) return;                        // on the bench: walk freely
       // (1) stepping off the bench where the trail is already high: pull back onto
       // it. Only within the engineered shoulder — past that you're on wild rock.
-      if (_c.h >= RAMP_GATE && off < CARVE_OUT + 4 && off > 1e-4) {
+      if (_c.h >= RAMP_GATE && off < carveAt(t) + 4 && off > 1e-4) {
         _n.copy(east).multiplyScalar(-ex / off).addScaledVector(north, -ez / off);
-        P.addScaledVector(_n, off - TRAIL_HW);
+        P.addScaledVector(_n, off - hw);
         return;
       }
       // (2) wild rock: gentle ground is walkable, scree slides you back down
@@ -714,7 +769,7 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
       for (let s = 0; s <= ACROSS; s++) {
         const u = (s / ACROSS) * 2 - 1;                   // -1 .. +1 across
         const wob = nz2(t * 40 + s) * 0.5;
-        const off = u * (TRAIL_HW - 0.6) + wob;
+        const off = u * (hwAt(t) - 0.5) + wob * (hwAt(t) / TRAIL_HW);
         worldOf(a.x + nx * off, a.z + nz * off, a.h + 0.12, w);
         pos.push(w.x, w.y, w.z);
         _col.copy(cMid).lerp(cEdge, Math.abs(u) * 0.85);
@@ -759,10 +814,11 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
     const gz = (gridH(lx, lz + e) - gridH(lx, lz - e)) / (2 * e);
     return Math.hypot(gx, gz);
   }
-  function offTrail(lx, lz, margin) {
+  // `pad` is clearance beyond the path's local half-width, which narrows near the top
+  function offTrail(lx, lz, pad) {
     const t = closestT(lx, lz);
     centerAt(t, _c);
-    return Math.hypot(lx - _c.x, lz - _c.z) > margin;
+    return Math.hypot(lx - _c.x, lz - _c.z) > hwAt(t) + pad;
   }
   function place(mesh, n, dir, h, yOff, yaw, sx, sy, sz, tilt, tint) {
     _dummy.position.copy(dir).multiplyScalar(baseR + h + yOff);
@@ -804,7 +860,7 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
     if (h <= 0.2) continue;
     const g = gridSlope(lx, lz);
     if (g < 0.35 || g > 1.6) continue;
-    if (!offTrail(lx, lz, TRAIL_HW + 0.8)) continue;
+    if (!offTrail(lx, lz, 0.8)) continue;
     // cluster along the trail edges and in mid-slope talus fields
     const t = closestT(lx, lz); centerAt(t, _c);
     const dTrail = Math.hypot(lx - _c.x, lz - _c.z);
@@ -922,7 +978,9 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
   // outward = away from the mountain axis, in the tangent plane at that point
   const _o1 = new THREE.Vector3(), _o2 = new THREE.Vector3(), _outw = new THREE.Vector3();
   function outwardAt(lx, lz, out) {
-    const r = Math.hypot(lx, lz) || 1, k = 1 + 0.5 / r;
+    const r = Math.hypot(lx, lz);
+    if (r < 1e-3) return out.copy(north);          // on the axis: no outward direction
+    const k = 1 + 0.5 / r;
     worldOf(lx * k, lz * k, 0, _o1);
     worldOf(lx, lz, 0, _o2);
     return out.subVectors(_o1, _o2).normalize();
@@ -991,7 +1049,9 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
   const flag = new THREE.Mesh(new THREE.PlaneGeometry(3, 1.8),
     new THREE.MeshStandardMaterial({ color: 0xf5b642, emissive: 0x3a2a06, roughness: 0.6, side: THREE.DoubleSide }));
   flag.position.set(1.5, cy + 4.6, 0); summitGroup.add(flag);
-  placeLocal(summitGroup, SUM_X, SUM_Z, SUM_H, outwardAt(SUM_X, SUM_Z, _outw));
+  // just off the axis, so there is clear ground to stand on at the very top
+  const CRN_X = 2.6, CRN_Z = 0.6;
+  placeLocal(summitGroup, CRN_X, CRN_Z, surfaceH(CRN_X, CRN_Z), outwardAt(CRN_X, CRN_Z, _outw));
   group.add(summitGroup);
 
   // --- interactions + compass ----------------------------------------------
@@ -1002,9 +1062,9 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
     action: () => showCard({
       kicker: 'Mont Le Ringger · the summit',
       title: 'The world, laid out below',
-      meta: `${Math.round(SUM_H)} units above the plains`,
+      meta: `${Math.round(CROWN_H)} units above the plains — the true summit`,
       body: [
-        'You stand at the cairn on the notch between the teeth, the flag snapping in the thin wind. The switchbacks fall away beneath your boots, band after band of scree and broken granite.',
+        'You stand on the very top, the cairn beside you and the flag snapping in the thin wind. The rock teeth ring the crown just below, and the switchbacks fall away beneath your boots, band after band of scree and broken granite.',
         'The plains roll out to a curved horizon six hundred paces away, and beyond it the world simply bends out of sight. Settlements are pinpricks. The clouds are below you.',
       ],
     }),
@@ -1023,7 +1083,7 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
     }),
   });
 
-  const compass = [{ name: 'Mont Le Ringger', pos: mDir.clone().multiplyScalar(baseR + H_TOP + 10) }];
+  const compass = [{ name: 'Mont Le Ringger', pos: mDir.clone().multiplyScalar(baseR + CROWN_H + 10) }];
 
   // --- per-frame ------------------------------------------------------------
   let trimmed = false;
@@ -1098,7 +1158,19 @@ export function buildMonteRingger(ctx, tm, opts = {}) {
           baseR, expectMid: baseR + mid.h, on, off, far, moved,
           moved2: p2.distanceTo(p1), verts: vCount, tris: idx.length / 3,
           boulders: bCount[0] + bCount[1] + bCount[2], grass: gN, flowers: fN,
-          trailTop: SUM_H, crown: surfaceH(0, 0),
+          trailTop: trailH(1), crown: surfaceH(0, 0), rawCrown: CROWN_H,
+          // the summit must be reachable: standing floor at the axis, and the
+          // path's top must arrive at the crown rather than stopping below it
+          summitFloor: resolver.floor(worldOf(0, 0, CROWN_H, new THREE.Vector3())) - baseR,
+          // nothing on the mountain may out-top the perch
+          maxAnywhere: (() => {
+            let m = 0;
+            for (let i = 0; i < 4000; i++) {
+              const a = i * 2.39996, rr = Math.sqrt(i / 4000) * 90;
+              m = Math.max(m, surfaceH(Math.cos(a) * rr, Math.sin(a) * rr));
+            }
+            return m;
+          })(),
         };
       },
     };
