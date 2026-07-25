@@ -10,8 +10,10 @@
 // periodic rebuild, not per-frame.
 
 import * as THREE from 'three';
+import { exclusionSink } from './layout.js';
 
 const RESTREAM = 14;   // rebuild once the centre has moved this many units
+const SINK = 34;       // how far to drop the patch under a structure's own ground mesh
 
 export function buildTerrainDetail(planet, spawnDir, opts = {}) {
   const N = opts.grid ?? (opts.quality === 'low' ? 40 : 64); // cells per side
@@ -80,6 +82,10 @@ export function buildTerrainDetail(planet, spawnDir, opts = {}) {
         const onLand = h > 0.001;
         if (rr < seaR) rr = seaR - 0.05;
         else rr += BIAS;
+        // Where a structure owns the ground (the mountain), sink this patch out
+        // of sight beneath it instead of drawing raw terrain through the rock.
+        const sk = exclusionSink(_dir);
+        if (sk > 0) rr -= SINK * sk;
         positions[idx] = _dir.x * rr;
         positions[idx + 1] = _dir.y * rr;
         positions[idx + 2] = _dir.z * rr;
