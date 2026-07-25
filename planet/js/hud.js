@@ -67,6 +67,48 @@ export function showCard(data) {
   return el;
 }
 
+// --- interactive citizen dialogue tree ---
+// data: { kicker, title, greeting, choices:[{ label, say, end, then:[{label,say}] }] }
+// Renders the greeting + choice buttons; a choice shows its response and any
+// follow-up choices, with a "Back" to the greeting. "Say goodbye" (end) closes.
+export function showDialogue(data) {
+  const el = $('card');
+  if (!el) return;
+  const head = `
+    <button class="card-close" aria-label="Close">×</button>
+    <div class="card-text">
+      ${data.kicker ? `<div class="card-kicker">${escapeHtml(data.kicker)}</div>` : ''}
+      <h2 class="card-title">${escapeHtml(data.title || '')}</h2>`;
+
+  function render(text, options, showBack) {
+    const btns = options.map((o, i) =>
+      `<button class="dlg-choice" data-i="${i}">${escapeHtml(o.label)}</button>`
+    ).join('');
+    const back = showBack ? `<button class="dlg-choice ghost" data-back="1">← Back</button>` : '';
+    el.innerHTML = `
+      <div class="card-box dialogue">
+        ${head}
+        <div class="card-body dlg-say"><p>${escapeHtml(text)}</p></div>
+        <div class="dlg-choices">${btns}${back}</div>
+      </div></div>`;
+    el.querySelector('.card-close').addEventListener('click', closeOverlays);
+    el.querySelectorAll('.dlg-choice').forEach((b) => {
+      b.addEventListener('click', () => {
+        if (b.dataset.back) { greeting(); return; }
+        const o = options[+b.dataset.i];
+        if (!o) return;
+        if (o.end) { closeOverlays(); return; }
+        render(o.say || '', o.then || [], true);
+      });
+    });
+  }
+  function greeting() { render(data.greeting || '', data.choices || [], false); }
+
+  greeting();
+  openOverlay(el);
+  return el;
+}
+
 // --- archive viewer (full-res image) ---
 export function showViewer(data) {
   const el = $('viewer');

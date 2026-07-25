@@ -9,6 +9,8 @@
 // `life` (from biomeCivs.js) carries: { kind:'city'|'outpost', biome, name,
 // economy, roleOf(citizen) }.
 
+import { CITY_ROLES, makeContext, fillVars } from './city/citizenRoles.js';
+
 const CITY_OPENERS = [
   'They set down their work to greet you.',
   'They meet your eyes with an easy, settled smile.',
@@ -77,4 +79,58 @@ function hashName(s) {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
   return h >>> 0;
+}
+
+// ---------------------------------------------------------------------------
+// Branching dialogue for the permanent town's citizens
+// ---------------------------------------------------------------------------
+// The town already assigns each citizen a role (farmer, gardener, artisan,
+// merchant, caretaker, resident). Each role speaks a full dialogue TREE —
+// greeting, player choices, responses and follow-ups — instead of a single
+// card. The trees live in city/citizenRoles.js; their {{variables}} are filled
+// from the live economy where it has a matching figure, so a farmer quotes the
+// real season and the real crop in store.
+
+// town role -> tree role name in citizenRoles.js
+const ROLE_TREE = {
+  farmer: 'Farmer',
+  gardener: 'Gardener',
+  artisan: 'Artisan',
+  merchant: 'Merchant',
+  caretaker: 'Caretaker',
+};
+// Residents get one of the remaining trees, picked deterministically by name so
+// the town has scholars, guides, apprentices, patrons and entertainers in it.
+const RESIDENT_TREES = ['Scholar', 'Tourist Guide', 'Apprentice', 'Patron', 'Entertainer'];
+
+export function buildCitizenDialogue(citizen, life) {
+  const seed = hashName(citizen.name || 'stranger');
+  const role = life && life.roleOf ? life.roleOf(citizen) : 'resident';
+  const treeName = ROLE_TREE[role] || RESIDENT_TREES[seed % RESIDENT_TREES.length];
+  const tree = CITY_ROLES.find((r) => r.role === treeName) || CITY_ROLES[0];
+
+  // Deterministic flavour, overridden by real economy figures where they exist.
+  const ctx = makeContext(seed);
+  const e = life && life.economy;
+  if (e) {
+    if (e.season) ctx.season = e.season;
+    if (typeof e.stockpile === 'function') {
+      const crop = e.stockpile('crop');
+      if (crop != null) ctx.cropCount = crop;
+    }
+  }
+
+  const choices = tree.choices.map((c) => ({
+    label: fillVars(c.label, ctx),
+    say: fillVars(c.say, ctx),
+    end: !!c.end,
+    then: (c.then || []).map((f) => ({ label: fillVars(f.label, ctx), say: fillVars(f.say, ctx) })),
+  }));
+
+  return {
+    kicker: `${tree.role} · ${life && life.name ? life.name : 'the town'}`,
+    title: citizen.name,
+    greeting: fillVars(tree.greeting, ctx),
+    choices,
+  };
 }

@@ -20,10 +20,10 @@ import {
   updateInteract, fireInteract, currentFocus, clearInteractables,
 } from './interact.js';
 import {
-  initHud, initCompassScratch, showPrompt, hidePrompt, showHint, showCard,
+  initHud, initCompassScratch, showPrompt, hidePrompt, showHint, showCard, showDialogue,
   updateCompass, isOverlayOpen, closeOverlays,
 } from './hud.js';
-import { buildCitizenCard } from './citydialogue.js';
+import { buildCitizenCard, buildCitizenDialogue } from './citydialogue.js';
 
 let dressing = null;
 let foliage = null;
@@ -100,6 +100,17 @@ export async function buildWorld(context) {
 
   await buildGallery(ctx, zones, tm);
   window.__tm = tm; // gallery grabs this to lazily register interior textures
+  // Headless verification: open the dialogue for the nearest townsperson,
+  // regardless of range. (Guarded — only present in debug runs.)
+  if (window.__debug) {
+    window.__talk = (i = 0) => {
+      const st = biomeCivs && biomeCivs.debugCity ? biomeCivs.debugCity() : null;
+      if (!st || !st.crowd || !st.crowd.citizens.length) return null;
+      const c = st.crowd.citizens[i % st.crowd.citizens.length];
+      showDialogue(buildCitizenDialogue(c, st.life)); // same shape talkTarget passes
+      return { count: st.crowd.citizens.length, name: c.name, role: st.life.roleOf(c) };
+    };
+  }
 
   // leaving the gallery drops the player back outside its door on the planet
   setExitHandler((exit) => { if (exit) spawnAt(ctx.planet, exit.dir, exit.heading); });
@@ -120,7 +131,14 @@ export function handleInteract() {
   if (isOverlayOpen()) { closeOverlays(); return; }
   if (galleryActive()) { galleryInteract(); return; }
   if (vehicleActive()) { exitVehicle(); return; }
-  if (pendingTalk) { showCard(buildCitizenCard(pendingTalk.citizen, pendingTalk.life)); return; }
+  if (pendingTalk) {
+    // Townsfolk hold a branching conversation (role dialogue trees); the lone
+    // researchers at the far outposts still get the simple spoken card.
+    const { citizen, life } = pendingTalk;
+    if (life && life.kind === 'outpost') showCard(buildCitizenCard(citizen, life));
+    else showDialogue(buildCitizenDialogue(citizen, life));
+    return;
+  }
   fireInteract();
 }
 
