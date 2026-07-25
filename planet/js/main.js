@@ -8,7 +8,8 @@ import { createPlanet, bakePlanet, updatePlanet } from './planet.js';
 import { skydomeVert, skydomeFrag } from './shaders.js';
 import { createPost } from './post.js';
 import { createWeather } from './weather.js';
-import { input, initInput, lockPointer } from './input.js';
+import { input, initInput, lockPointer, isActive } from './input.js';
+import { initTouch, setTouchMode } from './touch.js';
 import { walk, stepWalk, updateWalkCamera, spawnAt } from './walk.js';
 import { vehicleActive, stepVehicle, updateVehicleCamera } from './vehicles.js';
 import { buildWorld, enterContent, updateWorld, resolveZoneJump, handleInteract, activeScene } from './world.js';
@@ -23,8 +24,29 @@ if (document.documentElement.classList.contains('no-webgl')) {
 }
 
 const params = new URLSearchParams(location.search);
-const DEBUG = params.get('debug');
+// `?debug` (no value) read as '' and fell through as falsy; only `?debug=…`
+// ever armed the headless path. Normalise so both spellings work — `?debug=at:x`
+// still carries its zone name.
+const DEBUG = params.has('debug') ? (params.get('debug') || '1') : null;
 const FLY = params.has('fly');
+
+// Phones and tablets run the same world on a lighter budget. The head probe in
+// index.html sets html.touch before any module loads. ?touch / ?notouch force it
+// either way for testing on a desktop.
+const TOUCH = params.has('touch')
+  || (document.documentElement.classList.contains('touch') && !params.has('notouch'));
+
+// Build-time budgets have to be cut BEFORE createDressing/buildFoliage run.
+// C is a plain object and dressing.js reads these inside its builders, so
+// mutating it here lands. C.DRESS_RADIUS is deliberately left alone —
+// foliage.js captures INNER = C.DRESS_RADIUS * 0.85 at module load, so changing
+// it now would desync the two scatter systems.
+if (TOUCH) {
+  C.DRESS_GRASS = 3500;
+  C.DRESS_TREES = 40;
+  C.DRESS_SHRUBS = 70;
+  C.DRESS_ROCKS = 28;
+}
 
 const canvas = document.createElement('canvas');
 canvas.className = 'planet-canvas';
@@ -46,7 +68,11 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x171021, 260, 1500);
 
-const camera = new THREE.PerspectiveCamera(C.FOV, innerWidth / innerHeight, 0.1, 12000);
+// near 0.25 on phones: the eye sits 1.8 above the feet so nothing renders
+// closer, and a 0.1/12000 range is 120,000:1 — enough to z-fight the detail
+// patch on the 16/24-bit depth buffers common on mobile GPUs. far stays put;
+// planet.js sizes the skydome from camera.far and clips it below ~8000.
+const camera = new THREE.PerspectiveCamera(C.FOV, innerWidth / innerHeight, TOUCH ? 0.25 : 0.1, 12000);
 camera.up.copy(LANDING_DIR);
 
 // --- lighting (dressing + structures use MeshStandard) ---
@@ -112,7 +138,11 @@ function buildEnvironment() {
 // the lowest tier.
 const post = createPost(renderer, { strength: 0.95, threshold: 0.6, quality: 'high' });
 
-let quality = 'high';
+// Touch devices boot straight into the lowest tier: pixel ratio 1, no shadows,
+// no bloom. Deliberately reusing 'low' rather than inventing a 'mobile' string —
+// planet.js, terrainDetail.js and monteringger.js all branch on === 'low', and a
+// new name would silently skip every one of those reductions.
+let quality = TOUCH ? 'low' : 'high';
 let running = false;
 const clock = new THREE.Clock();
 
@@ -137,6 +167,7 @@ function applyQuality(q) {
   if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
   post.setSize();
 }
+if (TOUCH) applyQuality('low');
 
 // Keep the shadow frustum centred on the player (fixed sun direction).
 const _shadowCtr = new THREE.Vector3();
@@ -178,7 +209,7 @@ const loaderEl = document.getElementById('loader');
 const fillEl = document.getElementById('loader-fill');
 const statusEl = document.getElementById('loader-status');
 const enterBtn = document.getElementById('enter-btn');
-const controlsEl = document.getElementById('loader-controls');
+const enterWorldBtn = document.getElementById('enter-world');
 const hudEl = document.getElementById('hud');
 
 function setProgress(f, label) {
@@ -186,20 +217,32 @@ function setProgress(f, label) {
   if (label && statusEl) statusEl.textContent = label;
 }
 
-bakePlanet(planet, (f) => setProgress(f * 0.9, 'shaping the terrain…'), () => {
-  setProgress(0.92, 'growing the valley…');
-  // give later phases a beat to build zones/dressing before revealing ENTER
-  buildEnvironment(); // sky reflections ready before the world builds
-  buildWorld({ scene, planet, camera, renderer, quality, getQuality }).then(() => {
-    setProgress(1, 'ready');
-    if (statusEl) statusEl.textContent = '';
-    if (enterBtn) enterBtn.hidden = false;
-    if (controlsEl) controlsEl.hidden = false;
-    // start rendering behind the loader so ENTER reveals a live world
-    startRenderLoop();
-    if (DEBUG) enterWorld(); // headless/debug: skip the click gate
-  }).catch((e) => { console.error('world build failed', e); });
-});
+// Nothing heavy runs until the visitor picks the world over the classic site.
+// Baking a planet behind a title screen costs a phone real battery for someone
+// who was only ever heading to classic.html.
+let loadStarted = false;
+function startLoad() {
+  if (loadStarted) return;
+  loadStarted = true;
+  if (loaderEl) { loaderEl.classList.remove('stage-choice'); loaderEl.classList.add('stage-loading'); }
+
+  bakePlanet(planet, (f) => setProgress(f * 0.9, 'shaping the terrain…'), () => {
+    setProgress(0.92, 'growing the valley…');
+    buildEnvironment(); // sky reflections ready before the world builds
+    buildWorld({ scene, planet, camera, renderer, quality, getQuality }).then(() => {
+      setProgress(1, 'ready');
+      if (statusEl) statusEl.textContent = '';
+      // start rendering behind the loader so entering reveals a live world
+      startRenderLoop();
+      if (DEBUG) { enterWorld(); return; } // headless/debug: skip the click gate
+      // Touch has no pointer lock to acquire, so drop straight in. Desktop needs
+      // one more click: requestPointerLock is only reliably granted inside a
+      // fresh user gesture, and the bake took far longer than that.
+      if (TOUCH) enterWorld();
+      else if (enterBtn) enterBtn.hidden = false;
+    }).catch((e) => { console.error('world build failed', e); });
+  });
+}
 
 function enterWorld() {
   // spawn at the landing site facing north
@@ -216,6 +259,9 @@ function jumpToZone(name) {
   if (d) { spawnAt(planet, d.dir, d.heading || NORTH); if (d.pitch) walk.pitch = d.pitch; }
 }
 
+// Title screen: "ENTER THE WORLD" starts the bake; "CLASSIC SITE" is a plain
+// link and needs no wiring. ?debug loads headlessly with no click at all.
+if (enterWorldBtn) enterWorldBtn.addEventListener('click', startLoad);
 if (enterBtn) enterBtn.addEventListener('click', enterWorld);
 canvas.addEventListener('click', () => { if (running && !input.locked && !document.querySelector('.card-overlay:not([hidden]),.viewer-overlay:not([hidden])')) lockPointer(canvas); });
 
@@ -223,6 +269,12 @@ initInput(canvas,
   () => { try { handleInteract(); } catch (e) { console.error(e); } },
   () => { if (hudEl) hudEl.classList.remove('locked'); }
 );
+
+if (TOUCH) {
+  initTouch(canvas, { onInteract: () => { try { handleInteract(); } catch (e) { console.error(e); } } });
+}
+
+if (DEBUG) startLoad();
 
 // --- render loop ---
 function startRenderLoop() {
@@ -246,8 +298,9 @@ function frame() {
   }
 
   if (walk.planet) {
+    if (TOUCH) setTouchMode(vehicleActive() ? 'vehicle' : 'walk');
     if (vehicleActive()) {
-      if (input.locked || DEBUG) { stepVehicle(dt, t); updateVehicleCamera(camera); }
+      if (isActive() || DEBUG) { stepVehicle(dt, t); updateVehicleCamera(camera); }
     } else if (FLY) {
       // noclip: move the player freely along heading/up for debug screenshots
       const up = walk.player.clone().normalize();
@@ -265,11 +318,12 @@ function frame() {
       walk.heading.applyAxisAngle(up, yaw);
       input.mouseX = 0; input.mouseY = 0;
       updateWalkCamera(camera);
-    } else if (input.locked || DEBUG) {
+    } else if (isActive() || DEBUG) {
       stepWalk(dt);
       updateWalkCamera(camera);
     }
-    if (input.locked && hudEl) hudEl.classList.add('locked');
+    // the crosshair marks where the interact raycast points — needed on touch too
+    if (isActive() && hudEl) hudEl.classList.add('locked');
   }
 
   updatePlanet(planet, t, camera, quality);
@@ -279,11 +333,40 @@ function frame() {
   post.render(scene, camera);
 }
 
-addEventListener('resize', () => {
+// Phones rotate, and the DPR can change when a window moves between displays,
+// so re-apply the whole tier rather than just the size.
+function onResize() {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+  // devicePixelRatio isn't fixed — it changes when a window moves between
+  // displays, and setSize alone never re-read it.
+  renderer.setPixelRatio(quality === 'low' ? 1
+    : Math.min(devicePixelRatio, quality === 'medium' ? 1.25 : C.MAX_PIXEL_RATIO));
   post.setSize();
+}
+// Mobile browsers fire resize continuously as the URL bar collapses, and
+// onResize reallocates render targets — debounce it there.
+let resizeT = 0;
+addEventListener('resize', () => {
+  if (!TOUCH) { onResize(); return; }
+  clearTimeout(resizeT);
+  resizeT = setTimeout(onResize, 150);
+});
+addEventListener('orientationchange', () => setTimeout(onResize, 250));
+
+// iOS drops the WebGL context when it runs out of GPU memory, silently leaving
+// a black canvas. Say what happened and offer the door that always works.
+canvas.addEventListener('webglcontextlost', (e) => {
+  e.preventDefault();
+  renderer.setAnimationLoop(null);
+  running = false;
+  const el = document.getElementById('nogl');
+  if (el) {
+    const p = el.querySelector('p');
+    if (p) p.innerHTML = 'This device ran out of memory for the world.<br>Reload to try again — everything here also lives on the classic site.';
+    el.hidden = false;
+  }
 });
 
 // Pause the render loop when the tab is hidden (saves battery/CPU); resume on

@@ -165,8 +165,11 @@ export function stepWalk(dt) {
 
   // --- planar movement ---
   _right.crossVectors(walk.heading, _up).normalize();
-  const fwd = (input.forward ? 1 : 0) - (input.reverse ? 1 : 0);
-  const strafe = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+  // A thumbstick (touch.js) sets analog + moveX/moveY so a half-pushed stick
+  // walks slowly; the keyboard stays all-or-nothing.
+  const fwd = input.analog ? input.moveY : (input.forward ? 1 : 0) - (input.reverse ? 1 : 0);
+  const strafe = input.analog ? input.moveX : (input.right ? 1 : 0) - (input.left ? 1 : 0);
+  const mag = input.analog ? Math.min(Math.hypot(fwd, strafe), 1) : 1;
   _wish.set(0, 0, 0);
   _wish.addScaledVector(walk.heading, fwd);
   _wish.addScaledVector(_right, strafe);
@@ -174,7 +177,7 @@ export function stepWalk(dt) {
     ? C.WALK_SWIM_SPEED
     : wading ? C.WALK_WADE_SPEED
       : input.boost ? C.WALK_RUN_SPEED : C.WALK_SPEED;
-  if (_wish.lengthSq() > 0) _wish.normalize().multiplyScalar(targetSpeed);
+  if (_wish.lengthSq() > 0) _wish.normalize().multiplyScalar(targetSpeed * mag);
 
   projectTangent(walk.vel, _up);
   const accel = walk.swimming ? C.WALK_ACCEL_SWIM

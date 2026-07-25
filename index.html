@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>JFeelgood Art — Paintings, Books &amp; Limited Edition Cards</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23050509'/%3E%3Ccircle cx='16' cy='16' r='9' fill='%23f5b642'/%3E%3C/svg%3E">
   <meta name="description" content="The art of JFeelgood – paintings, series, and books born from 20 years of creative self-work. Explore the work as a walkable 3D planet.">
   <link rel="canonical" href="https://jfeelgood.com/" />
@@ -107,16 +107,20 @@
   }
   </script>
 
-  <!-- Gate: phones/tablets get the classic site; the planet needs a keyboard,
-       a mouse, and WebGL2. Runs before anything heavy loads. -->
+  <!-- Device probe. Phones are no longer redirected: they get the same title
+       screen, then the world with on-screen controls at a lighter quality tier.
+       html.touch drives the CSS and the boot budget; only a missing WebGL2
+       context still forces the classic-only card. Runs before anything heavy
+       loads. -->
   <script>
   (function () {
-    var coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
-    var narrow = Math.min(screen.width, screen.height) < 700 || innerWidth < 900;
-    var mobileUA = /Android|iPhone|iPad|iPod|Mobile|Silk/i.test(navigator.userAgent);
-    if ((coarse && narrow) || (mobileUA && narrow) || (coarse && mobileUA)) {
-      location.replace('classic.html');
-      return;
+    // Touch-PRIMARY, not merely touch-capable: (pointer: coarse) alone is true
+    // on hybrid touchscreen laptops, which have a mouse and real pointer lock
+    // and should keep the desktop path. Pairing it with (hover: none) isolates
+    // phones and tablets.
+    var mq = function (q) { return window.matchMedia(q).matches; };
+    if (window.matchMedia && mq('(pointer: coarse)') && mq('(hover: none)')) {
+      document.documentElement.classList.add('touch');
     }
     try {
       var c = document.createElement('canvas');
@@ -159,22 +163,37 @@
   <div id="nogl" class="nogl-card" hidden>
     <div class="nogl-inner">
       <div class="nogl-title">JFEELGOOD</div>
-      <p>This experience needs a desktop browser with WebGL.<br>
+      <p>This experience needs a browser with WebGL2.<br>
          Everything on the planet also lives on the classic site.</p>
       <a class="nogl-btn" href="classic.html">Visit the classic site →</a>
     </div>
   </div>
 
-  <!-- Loading / enter overlay -->
-  <div id="loader" class="loader">
+  <!-- Title screen → loading → world. #loader carries the stage class:
+       .stage-choice shows the two doors, .stage-loading shows the progress bar
+       and the control legend. main.js flips it. -->
+  <div id="loader" class="loader stage-choice">
     <div class="loader-inner">
       <div class="loader-kicker">an explorable world</div>
       <div class="loader-title">JFEELGOOD</div>
       <div class="loader-sub">Art, as an experience.</div>
+
+      <!-- stage: choice -->
+      <div class="title-choices">
+        <button id="enter-world" class="title-btn" type="button">ENTER THE WORLD</button>
+        <a id="go-classic" class="title-btn ghost" href="classic.html">CLASSIC SITE</a>
+      </div>
+      <div class="title-note">
+        <span>A walkable 3D planet — paintings in the open, a gallery rotunda,
+              vehicles, and settlements out in the wilds.</span>
+        <span>Or browse the same work the traditional way.</span>
+      </div>
+
+      <!-- stage: loading -->
       <div class="loader-bar"><div id="loader-fill" class="loader-fill"></div></div>
       <div id="loader-status" class="loader-status">forming the planet…</div>
-      <button id="enter-btn" class="enter-btn" hidden>ENTER THE WORLD</button>
-      <div class="loader-controls" id="loader-controls" hidden>
+      <button id="enter-btn" class="enter-btn" hidden>STEP ONTO THE PLANET</button>
+      <div class="loader-controls" id="loader-controls">
         <span><b>W A S D</b> walk</span>
         <span><b>SHIFT</b> run</span>
         <span><b>SPACE</b> jump</span>
@@ -182,7 +201,13 @@
         <span><b>E</b> interact</span>
         <span><b>ESC</b> release mouse</span>
       </div>
-      <a class="loader-classic" href="classic.html">or visit the classic site →</a>
+      <div class="loader-controls touch-controls" id="loader-controls-touch">
+        <span><b>STICK</b> walk</span>
+        <span><b>DRAG</b> look</span>
+        <span><b>▲</b> jump</span>
+        <span><b>RUN</b> sprint</span>
+        <span><b>ACT</b> interact</span>
+      </div>
     </div>
   </div>
 

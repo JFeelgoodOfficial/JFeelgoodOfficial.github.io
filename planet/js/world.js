@@ -78,7 +78,7 @@ export async function buildWorld(context) {
   // follows the player/vehicle across the whole planet
   const veh = buildVehicles(ctx);
   if (veh && veh.compass) compassEntries = compassEntries.concat(veh.compass);
-  foliage = buildFoliage(ctx.planet, zones.spawn);
+  foliage = buildFoliage(ctx.planet, zones.spawn, { scale: ctx.quality === 'low' ? 0.4 : 1 });
   // high-detail near-ground patch that follows the player across the planet
   terrainDetail = buildTerrainDetail(ctx.planet, zones.spawn, { quality: ctx.quality });
   ctx.scene.add(terrainDetail.mesh);
