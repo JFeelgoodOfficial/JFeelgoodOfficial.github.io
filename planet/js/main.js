@@ -12,6 +12,7 @@ import { input, initInput, lockPointer, isActive } from './input.js';
 import { initTouch, setTouchMode } from './touch.js';
 import { walk, stepWalk, updateWalkCamera, spawnAt } from './walk.js';
 import { vehicleActive, stepVehicle, updateVehicleCamera } from './vehicles.js';
+import { skiRideActive, stepSkiRide, updateSkiRideCamera } from './skislope.js';
 import { buildWorld, enterContent, updateWorld, resolveZoneJump, handleInteract, activeScene } from './world.js';
 
 // no-WebGL gate already flagged the <html> element; bail to the card.
@@ -194,8 +195,10 @@ window.__debug = {
   sim(seconds) {
     const dt = 1 / 60;
     for (let i = 0; i < Math.round(seconds * 60); i++) {
-      stepWalk(dt);
-      updateWalkCamera(camera); // camera must lead updateWorld (interaction reads it)
+      // mirror frame(): whichever movement mode is live gets stepped
+      if (vehicleActive()) { stepVehicle(dt, i * dt); updateVehicleCamera(camera); }
+      else if (skiRideActive()) { stepSkiRide(dt); updateSkiRideCamera(camera); }
+      else { stepWalk(dt); updateWalkCamera(camera); } // camera must lead updateWorld (interaction reads it)
       try { weather.update(dt, i * dt); } catch (e) { /* ignore in headless */ }
       updateWorld(dt, i * dt, camera);
     }
@@ -301,6 +304,9 @@ function frame() {
     if (TOUCH) setTouchMode(vehicleActive() ? 'vehicle' : 'walk');
     if (vehicleActive()) {
       if (isActive() || DEBUG) { stepVehicle(dt, t); updateVehicleCamera(camera); }
+    } else if (skiRideActive()) {
+      // riding the chairlift: the walker is parented to a seat by skislope.js
+      if (isActive() || DEBUG) { stepSkiRide(dt); updateSkiRideCamera(camera); }
     } else if (FLY) {
       // noclip: move the player freely along heading/up for debug screenshots
       const up = walk.player.clone().normalize();

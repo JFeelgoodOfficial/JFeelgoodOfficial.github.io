@@ -180,6 +180,14 @@ export function stepVehicle(dt, t) {
   if (!active) return;
   lastDt = dt;
   const v = active;
+  // a def may carry its own controller/orienter (the snowboard in skislope.js);
+  // everything else — enter/exit, camera, touch mode, prompts — stays shared
+  if (v.def.step) {
+    v.def.step(v, dt, t);
+    if (v.def.orient) v.def.orient(v); else orientVehicle(v);
+    animateParts(v);
+    return;
+  }
   if (v.def.kind === 'ground') stepGround(v, dt);
   else if (v.def.hover) stepDrone(v, dt);
   else stepPlane(v, dt);
@@ -331,6 +339,8 @@ function animateParts(v) {
 export function updateVehicleCamera(camera) {
   if (!active) return;
   const v = active;
+  // a def camera returning true replaces the chase cam (snowboard first-person)
+  if (v.def.camera && v.def.camera(camera, v, lastDt)) return;
   _up.copy(v.pos).normalize();
   _fwd.copy(v.def.kind === 'ground' ? v.heading : v.forward).normalize();
   _desired.copy(v.pos).addScaledVector(_fwd, -v.def.camDist).addScaledVector(_up, v.def.camHeight);
@@ -390,6 +400,10 @@ export function exitVehicle() {
   active = null;
   showHint('W A S D to walk · Shift run · E near a vehicle or horse');
 }
+
+// Register an externally built vehicle (the skislope snowboard) so it shares
+// enterVehicle/exitVehicle, the chase camera and the debug hooks.
+export function addVehicle(v) { vehicles.push(v); return v; }
 
 // world.js calls this on E while piloting; also drives the exit prompt.
 export function vehicleInteract() { exitVehicle(); return true; }

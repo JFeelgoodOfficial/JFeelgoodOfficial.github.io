@@ -37,6 +37,21 @@ const POOLS = {
   plains: ['clear', 'clear', 'cloudy', 'overcast', 'rain', 'storm', 'foggy'],
 };
 
+// Weather regions: a zone that owns its own microclimate (the ski resort)
+// registers a spherical cap here; while the player is inside it, its pool
+// replaces the biome pool. Checked before the biome lookup so a snowy resort
+// sited on temperate plains still gets alpine weather.
+const REGIONS = [];
+export function addWeatherRegion(dir, cosAng, pool) {
+  const r = { dir: dir.clone().normalize(), cosAng, pool };
+  REGIONS.push(r);
+  return r;
+}
+export function removeWeatherRegion(r) {
+  const i = REGIONS.indexOf(r);
+  if (i >= 0) REGIONS.splice(i, 1);
+}
+
 const N = 1000;         // particle count
 const BOX = 90;         // half-size of the particle box around the camera
 
@@ -149,6 +164,9 @@ export function createWeather({ scene, planet, sun, hemi, camera }) {
       for (const k of ['forest', 'desert', 'plains', 'alpine']) if ((b[k] || 0) > bw) { bw = b[k] || 0; best = k; }
       pool = POOLS[best] || POOLS.forest;
     } catch (e) { /* keep default */ }
+    for (let i = 0; i < REGIONS.length; i++) {
+      if (_up.dot(REGIONS[i].dir) > REGIONS[i].cosAng) { pool = REGIONS[i].pool; break; }
+    }
     let next = pool[Math.floor(Math.random() * pool.length)];
     if (next === stateName) next = pool[Math.floor(Math.random() * pool.length)]; // avoid immediate repeat
     stateName = next;
