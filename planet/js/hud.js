@@ -3,10 +3,39 @@
 // (so the cursor can click links/close); closing it re-locks and resumes the
 // walk. All styling lives in planet/css/planet.css.
 
+import { resetTouch, touchActive } from './touch.js';
+
 const $ = (id) => document.getElementById(id);
 
 let relock = () => {};
 let onClose = () => {};
+
+// Every prompt goes through showPrompt() and every control legend through
+// showHint(), so this is the one place that has to know the keyboard glyphs
+// baked into zones.js / vehicles.js / world.js aren't what a phone shows.
+// Longest phrases first — "Shift run" has to be caught before a bare "SHIFT".
+const GLYPHS = [
+  [/W A S D to walk/g, 'STICK to walk'],
+  [/Shift run/g, 'RUN to sprint'],
+  [/Space jump/g, '▲ to jump'],
+  [/E interact/g, 'ACT to interact'],
+  [/MOUSE \/ SPACE·SHIFT/g, 'DRAG / ▲ RUN'],
+  [/<b>E<\/b>/g, '<b>ACT</b>'],
+  [/W\/S/g, 'STICK ↑↓'],
+  [/A\/D/g, 'STICK ←→'],
+  [/SPACE/g, '▲'],
+  [/SHIFT/g, 'RUN'],
+  [/MOUSE/g, 'DRAG'],
+  // prose in card bodies ("Walk with W A S D, run with Shift…")
+  [/W A S D/g, 'the stick'],
+  [/\bShift\b/g, 'a full push of the stick'],
+  [/\bSpace\b/g, 'the ▲ button'],
+  [/\bE\b/g, 'ACT'],
+];
+function touchify(s) {
+  if (!touchActive()) return s;
+  return GLYPHS.reduce((acc, [re, to]) => acc.replace(re, to), String(s));
+}
 
 export function initHud(opts = {}) {
   relock = opts.relock || (() => {});
@@ -25,16 +54,23 @@ export function initHud(opts = {}) {
 export function showPrompt(html) {
   const el = $('prompt');
   if (!el) return;
-  el.innerHTML = html;
+  el.innerHTML = touchify(html);
   el.hidden = false;
+  // lights up the ACT button — on touch there's no key to try speculatively
+  document.body.classList.add('has-prompt');
 }
-export function hidePrompt() { const el = $('prompt'); if (el) el.hidden = true; }
+export function hidePrompt() {
+  const el = $('prompt');
+  if (el) el.hidden = true;
+  document.body.classList.remove('has-prompt');
+}
 
 export function showHint(text) {
   const el = $('hint');
   if (!el) return;
-  el.textContent = text;
+  el.textContent = touchify(text);
   el.hidden = false;
+  el.style.opacity = '1'; // the previous hint's fade-out leaves this at 0
   clearTimeout(el._t);
   el._t = setTimeout(() => { el.style.opacity = '0'; setTimeout(() => (el.hidden = true), 1000); }, 6000);
 }
@@ -47,7 +83,8 @@ export function showCard(data) {
   const acts = (data.actions || []).map((a) =>
     `<a class="card-btn${a.ghost ? ' ghost' : ''}" href="${a.href}" target="_blank" rel="noopener">${a.label}</a>`
   ).join('');
-  const body = (data.body || []).map((p) => `<p>${escapeHtml(p)}</p>`).join('');
+  // card prose names keys too ("run with Shift") — swap those on touch as well
+  const body = (data.body || []).map((p) => `<p>${touchify(escapeHtml(p))}</p>`).join('');
   const stock = data.stock ? `<div class="card-stock" data-stock>${escapeHtml(data.stock)}</div>` : '';
   el.innerHTML = `
     <div class="card-box">
@@ -128,6 +165,10 @@ export function showViewer(data) {
 function openOverlay(el) {
   el.hidden = false;
   if (document.pointerLockElement) document.exitPointerLock();
+  // touch has no lock to drop — instead let go of the stick/buttons and get the
+  // controls out from in front of the card
+  document.documentElement.classList.add('overlay-open');
+  resetTouch();
 }
 
 export function isOverlayOpen() {
@@ -140,6 +181,7 @@ export function closeOverlays() {
     const e = $(id);
     if (e && !e.hidden) { e.hidden = true; e.innerHTML = ''; closed = true; }
   }
+  document.documentElement.classList.remove('overlay-open');
   if (closed) { onClose(); relock(); }
 }
 
@@ -147,12 +189,17 @@ export function closeOverlays() {
 // entries: [{ name, pos:Vector3 }]. Places ticks by horizontal bearing
 // relative to the camera forward, within ±HALF degrees.
 const HALF = 75;
+const _marks = [];
 export function updateCompass(entries, camPos, fwd, up, THREE) {
   const el = $('compass');
   if (!el || !_v1 || !_v2) return;
-  // reuse child nodes to avoid per-frame allocation churn
-  let html = '';
+  // A phone strip is ~390px wide, so the desktop ±75° fan crams a dozen labels
+  // into unreadable mush. Narrow the fan and enforce a minimum gap.
+  const touch = touchActive();
+  const half = touch ? 45 : HALF;
+  const minGap = touch ? 26 : 13; // percent of the strip
   const right = _v1.crossVectors(fwd, up).normalize();
+  _marks.length = 0;
   for (const e of entries) {
     _v2.subVectors(e.pos, camPos);
     // project onto the horizontal (tangent) plane
@@ -162,10 +209,18 @@ export function updateCompass(entries, camPos, fwd, up, THREE) {
     const f = _v2.dot(fwd);
     const r = _v2.dot(right);
     const ang = Math.atan2(r, f) * 180 / Math.PI; // -180..180, 0 = ahead
-    if (Math.abs(ang) > HALF) continue;
-    const x = 50 + (ang / HALF) * 50;
-    const dim = Math.abs(ang) > 45 ? ' dim' : '';
-    html += `<span class="tick${dim}" style="left:${x.toFixed(1)}%">${e.name}</span>`;
+    if (Math.abs(ang) > half) continue;
+    _marks.push({ x: 50 + (ang / half) * 50, ang, name: e.name });
+  }
+  // what's straight ahead matters most, so it wins any collision
+  _marks.sort((a, b) => Math.abs(a.ang) - Math.abs(b.ang));
+  let html = '';
+  const placed = [];
+  for (const m of _marks) {
+    if (placed.some((p) => Math.abs(p - m.x) < minGap)) continue;
+    placed.push(m.x);
+    const dim = Math.abs(m.ang) > half * 0.6 ? ' dim' : '';
+    html += `<span class="tick${dim}" style="left:${m.x.toFixed(1)}%">${m.name}</span>`;
   }
   el.innerHTML = html;
 }

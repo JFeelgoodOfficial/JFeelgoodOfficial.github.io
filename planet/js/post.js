@@ -141,6 +141,14 @@ export function createPost(renderer, opts = {}) {
   let fullW = 2, fullH = 2, halfW = 1, halfH = 1;
 
   function setSize() {
+    // Disabled means render() goes straight to the canvas and never touches
+    // these; keep them at 2×2 so a low-tier device isn't holding a full-screen
+    // multisampled framebuffer plus two bloom targets for nothing.
+    if (!enabled) {
+      fullW = fullH = halfW = halfH = 2;
+      sceneRT.setSize(2, 2); rtA.setSize(2, 2); rtB.setSize(2, 2);
+      return;
+    }
     renderer.getDrawingBufferSize(_size);
     fullW = Math.max(2, _size.x | 0);
     fullH = Math.max(2, _size.y | 0);
@@ -197,7 +205,7 @@ export function createPost(renderer, opts = {}) {
   function setQuality(name) {
     tier = QUALITY[name] || QUALITY.high;
   }
-  function setEnabled(v) { enabled = !!v; }
+  function setEnabled(v) { const was = enabled; enabled = !!v; if (enabled !== was) setSize(); }
   function setStrength(v) { compositeMat.uniforms.uStrength.value = v; }
 
   function dispose() {

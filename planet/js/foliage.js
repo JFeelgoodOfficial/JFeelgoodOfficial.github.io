@@ -122,16 +122,24 @@ function makeInstanced(geo, cap, matOpts) {
   return m;
 }
 
-export function buildFoliage(planet, spawnDir) {
+// `scale` (0..1) thins every instance budget and pulls the scatter radius in —
+// phones boot at 0.4 so the streaming set stays affordable alongside the town,
+// the mountain and the biome civs.
+export function buildFoliage(planet, spawnDir, opts = {}) {
+  const scale = opts.scale ?? 1;
+  const cap = {};
+  for (const k in CAP) cap[k] = Math.max(8, Math.round(CAP[k] * scale));
+  const rBig = R_BIG * (0.5 + 0.5 * scale);
+  const rGrass = R_GRASS * (0.5 + 0.5 * scale);
   _spawn.copy(spawnDir).normalize();
   _sp.copy(_spawn).multiplyScalar(planet.radius);
   const seaLevel = C.SEA_LEVEL, amp = C.TERRAIN_HEIGHT, radius = planet.radius;
   const gRand = mulberry32(20240722);
 
-  const broadleaf = makeInstanced(broadleafGeo(gRand), CAP.broadleaf);
-  const pine = makeInstanced(pineGeo(gRand), CAP.pine);
-  const cactus = makeInstanced(cactusGeo(gRand), CAP.cactus);
-  const rock = makeInstanced(rockGeo(gRand), CAP.rock, { flatShading: true, roughness: 0.95 });
+  const broadleaf = makeInstanced(broadleafGeo(gRand), cap.broadleaf);
+  const pine = makeInstanced(pineGeo(gRand), cap.pine);
+  const cactus = makeInstanced(cactusGeo(gRand), cap.cactus);
+  const rock = makeInstanced(rockGeo(gRand), cap.rock, { flatShading: true, roughness: 0.95 });
 
   // grass tuft (a swept blade card, wind handled in the vertex shader)
   const gGeo = new THREE.PlaneGeometry(0.26, 1, 1, 3);
@@ -149,7 +157,7 @@ export function buildFoliage(planet, spawnDir) {
         float bend = transformed.y*transformed.y;
         transformed.x += sway*0.16*bend; transformed.z += sway*0.09*bend; }`);
   };
-  const grass = new THREE.InstancedMesh(gGeo, grassMat, CAP.grass);
+  const grass = new THREE.InstancedMesh(gGeo, grassMat, cap.grass);
   grass.frustumCulled = false; grass.count = 0;
 
   const meshes = [broadleaf, pine, cactus, rock, grass];
@@ -197,10 +205,10 @@ export function buildFoliage(planet, spawnDir) {
     counts.broadleaf = counts.pine = counts.cactus = counts.rock = counts.grass = 0;
 
     // big scatter: trees, cacti, rocks
-    const attempts = 2200;
+    const attempts = Math.round(2200 * scale);
     for (let i = 0; i < attempts; i++) {
       const a = rand() * Math.PI * 2;
-      const r = Math.sqrt(rand()) * R_BIG;
+      const r = Math.sqrt(rand()) * rBig;
       const ox = Math.cos(a) * r, oz = Math.sin(a) * r;
       const dir = dirAt(ox, oz, _dir);
       const h = heightAt(dir);
@@ -210,7 +218,7 @@ export function buildFoliage(planet, spawnDir) {
       if (slope(ox, oz) > 0.5) continue;
       const b = biomeAt(dir);
 
-      if (b.desert > 0.45 && counts.cactus < CAP.cactus) {
+      if (b.desert > 0.45 && counts.cactus < cap.cactus) {
         if (rand() < 0.12 * b.desert) {
           const s = 0.7 + rand() * 0.7;
           setPose(cactus, counts.cactus++, dir, h, -0.2, rand() * 6.28, s, s * (0.9 + rand() * 0.5), s, whiten(rand));
@@ -218,7 +226,7 @@ export function buildFoliage(planet, spawnDir) {
         }
       }
       // rocks in desert + alpine
-      if ((b.desert > 0.35 || b.alpine > 0.4) && counts.rock < CAP.rock && rand() < 0.14) {
+      if ((b.desert > 0.35 || b.alpine > 0.4) && counts.rock < cap.rock && rand() < 0.14) {
         const s = 0.4 + Math.pow(rand(), 2) * 3.0;
         _col.setRGB(0.5, 0.47, 0.42);
         if (b.desert > 0.4) _col.setRGB(0.68, 0.56, 0.36);
@@ -228,20 +236,20 @@ export function buildFoliage(planet, spawnDir) {
       // pines in forest highlands + alpine fringe
       const pineChance = 0.16 * b.forest + 0.1 * b.alpine;
       const leafChance = 0.2 * b.forest + 0.03 * b.plains;
-      if (h < 46 && counts.pine < CAP.pine && rand() < pineChance) {
+      if (h < 46 && counts.pine < cap.pine && rand() < pineChance) {
         const s = 0.9 + rand() * 0.8;
         setPose(pine, counts.pine++, dir, h, -0.4, rand() * 6.28, s, s * (0.9 + rand() * 0.3), s, whiten(rand));
-      } else if (h < 42 && counts.broadleaf < CAP.broadleaf && rand() < leafChance) {
+      } else if (h < 42 && counts.broadleaf < cap.broadleaf && rand() < leafChance) {
         const s = 0.85 + rand() * 0.7;
         setPose(broadleaf, counts.broadleaf++, dir, h, -0.4, rand() * 6.28, s, s * (0.9 + rand() * 0.3), s, whiten(rand));
       }
     }
 
     // grass: dense in forest/plains, none in desert/alpine
-    const gAtt = 5200;
-    for (let i = 0; i < gAtt && counts.grass < CAP.grass; i++) {
+    const gAtt = Math.round(5200 * scale);
+    for (let i = 0; i < gAtt && counts.grass < cap.grass; i++) {
       const a = rand() * Math.PI * 2;
-      const r = Math.sqrt(rand()) * R_GRASS;
+      const r = Math.sqrt(rand()) * rGrass;
       const ox = Math.cos(a) * r, oz = Math.sin(a) * r;
       const dir = dirAt(ox, oz, _dir);
       const h = heightAt(dir);

@@ -30,6 +30,8 @@ canvas.planet-canvas {
   display: block;
   width: 100%;
   height: 100%;
+  /* drag-to-look owns the canvas on touch; no scrolling or pinch-zoom */
+  touch-action: none;
 }
 
 /* ---------- no-JS / no-WebGL ---------- */
@@ -164,6 +166,65 @@ canvas.planet-canvas {
 }
 .loader-classic:hover { color: var(--accent); }
 
+/* ---------- title screen: two doors ---------- */
+
+/* #loader carries .stage-choice first, then .stage-loading once the visitor
+   picks the world. Nothing heavy runs until then. */
+.title-choices {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 32px;
+}
+.title-btn {
+  display: inline-block;
+  box-sizing: border-box;
+  min-width: 236px;
+  min-height: 50px;
+  padding: 15px 34px;
+  font-family: var(--sans);
+  font-size: 14px;
+  letter-spacing: 0.22em;
+  text-align: center;
+  text-decoration: none;
+  color: var(--bg);
+  background: linear-gradient(90deg, var(--accent), #e8c06a);
+  border: 1px solid transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.title-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 30px rgba(245, 182, 66, 0.35); }
+.title-btn.ghost {
+  color: var(--accent-soft);
+  background: none;
+  border-color: var(--border);
+}
+.title-btn.ghost:hover { border-color: var(--accent); box-shadow: none; }
+.title-note {
+  display: grid;
+  gap: 6px;
+  margin-top: 22px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+
+/* stage switching — plain display rules, no [hidden] traps */
+.loader.stage-choice .loader-bar,
+.loader.stage-choice .loader-status,
+.loader.stage-choice .enter-btn,
+.loader.stage-choice .loader-controls { display: none; }
+.loader.stage-loading .title-choices,
+.loader.stage-loading .title-note { display: none; }
+
+/* keyboard legend on desktop, on-screen legend on touch */
+.loader-controls.touch-controls { display: none; }
+html.touch .loader .loader-controls:not(.touch-controls) { display: none; }
+html.touch .loader.stage-loading .loader-controls.touch-controls { display: flex; }
+
 /* ---------- HUD ---------- */
 
 #hud[hidden] { display: none; }
@@ -281,6 +342,7 @@ canvas.planet-canvas {
 .card-overlay[hidden], .viewer-overlay[hidden] { display: none; }
 
 .card-box {
+  position: relative; /* .card-close anchors here, not to the viewport */
   display: flex;
   gap: 28px;
   max-width: min(920px, 92vw);
@@ -403,7 +465,7 @@ canvas.planet-canvas {
 
 /* ---------- archive full-res viewer ---------- */
 
-.viewer-box { text-align: center; max-width: 94vw; }
+.viewer-box { position: relative; text-align: center; max-width: 94vw; }
 .viewer-box img {
   max-width: 92vw;
   max-height: 82vh;
@@ -430,3 +492,181 @@ canvas.planet-canvas {
   z-index: 30;
 }
 #fade.on { opacity: 1; }
+
+/* ---------- on-screen controls (touch devices) ---------- */
+
+/* Built by planet/js/touch.js and appended to #hud, so it inherits
+   #hud[hidden] and appears exactly when the world is entered. The layer itself
+   never swallows events — only the stick and the buttons do — which leaves the
+   canvas free to receive drag-to-look everywhere else. */
+#touch {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+/* reading a card shouldn't happen behind a thumbstick */
+html.overlay-open #touch { display: none; }
+
+.touch-stick {
+  position: fixed;
+  left: calc(20px + env(safe-area-inset-left));
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  width: 136px;
+  height: 136px;
+  border-radius: 50%;
+  border: 1px solid rgba(245, 182, 66, 0.28);
+  background: rgba(5, 5, 9, 0.3);
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  touch-action: none;
+}
+.touch-knob {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(245, 225, 184, 0.26);
+  border: 1px solid rgba(245, 182, 66, 0.6);
+  pointer-events: none;
+}
+
+.touch-buttons {
+  position: fixed;
+  right: calc(20px + env(safe-area-inset-right));
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+.touch-row { display: flex; gap: 12px; }
+.touch-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  font-family: var(--sans);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  color: var(--accent-soft);
+  background: rgba(5, 5, 9, 0.5);
+  border: 1px solid rgba(245, 182, 66, 0.42);
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.touch-btn.on { background: rgba(245, 182, 66, 0.42); color: var(--bg); }
+/* ACT stays dim until something is actually in range */
+.touch-btn.touch-act {
+  align-self: flex-end;
+  width: 78px;
+  height: 78px;
+  opacity: 0.38;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+body.has-prompt .touch-btn.touch-act { opacity: 1; border-color: var(--accent); }
+
+/* ---------- touch HUD adjustments ---------- */
+
+html.touch, html.touch body { overscroll-behavior: none; }
+
+html.touch .compass {
+  height: calc(44px + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+}
+html.touch .compass .tick { top: calc(12px + env(safe-area-inset-top)); font-size: 10px; letter-spacing: 0.12em; }
+/* the hint is long and transient; float it clear of the compass, the footer
+   links and the thumb controls rather than letting it wrap across them */
+html.touch .hint {
+  top: 30%;
+  max-width: 78vw;
+  padding: 12px 16px;
+  text-align: center;
+  line-height: 1.7;
+  color: var(--accent-soft);
+  background: rgba(5, 5, 9, 0.66);
+  border: 1px solid rgba(245, 182, 66, 0.25);
+  border-radius: 2px;
+}
+/* clear of the thumbstick and the button cluster */
+html.touch .prompt {
+  bottom: calc(env(safe-area-inset-bottom) + 178px);
+  max-width: 84vw;
+  text-align: center;
+  line-height: 1.5;
+  letter-spacing: 0.14em;
+}
+/* the home-indicator strip is where the footer links used to sit; the top-right
+   band under the compass is the only place nothing else claims */
+html.touch .footer-links {
+  bottom: auto;
+  left: auto;
+  right: calc(12px + env(safe-area-inset-right));
+  top: calc(52px + env(safe-area-inset-top));
+  gap: 14px;
+  font-size: 10px;
+}
+/* pointer lock has no meaning here, so the legend loses its ESC line */
+html.touch .loader-controls.touch-controls { gap: 10px 18px; }
+
+@media (orientation: landscape) and (max-height: 540px) {
+  html.touch .prompt { bottom: auto; top: calc(58px + env(safe-area-inset-top)); }
+  html.touch .compass { height: calc(34px + env(safe-area-inset-top)); }
+  .touch-stick { width: 112px; height: 112px; }
+  .touch-knob { width: 46px; height: 46px; }
+  .touch-btn { width: 56px; height: 56px; font-size: 12px; }
+  .touch-btn.touch-act { width: 66px; height: 66px; }
+}
+
+/* ---------- narrow screens ---------- */
+
+@media (max-width: 760px) {
+  .title-choices { flex-direction: column; align-items: stretch; }
+  .title-btn { min-width: 0; width: 100%; }
+  .loader-inner { padding: 24px 20px calc(24px + env(safe-area-inset-bottom)); }
+  .loader-sub { font-size: 17px; margin-bottom: 24px; }
+
+  /* the card is a two-column layout with a 44vw image on desktop; stack it and
+     move the scroll from .card-text to the box so image and text move together */
+  .card-box {
+    box-sizing: border-box; /* keep the padding inside the 94vw, off the edges */
+    flex-direction: column;
+    gap: 16px;
+    width: 94vw;
+    max-width: 94vw;
+    max-height: 88vh;
+    max-height: 88dvh;
+    padding: 22px 18px calc(22px + env(safe-area-inset-bottom));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+  }
+  .card-box img { max-width: 100%; max-height: 40vh; max-height: 40dvh; align-self: center; }
+  .card-text { max-width: none; min-width: 0; overflow: visible; }
+  .card-title { font-size: 26px; }
+  .card-box.dialogue { min-width: 0; }
+  .card-actions .card-btn { flex: 1 1 auto; text-align: center; min-height: 44px; }
+  .dlg-choice { min-height: 48px; }
+  .card-close {
+    top: 4px;
+    right: 6px;
+    width: 44px;
+    height: 44px;
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .viewer-box {
+    max-width: 96vw;
+    max-height: 90vh;
+    max-height: 90dvh;
+    padding-top: calc(env(safe-area-inset-top) + 10px);
+  }
+  .viewer-box img { max-width: 94vw; max-height: 62vh; max-height: 62dvh; }
+}
