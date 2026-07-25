@@ -621,10 +621,15 @@ export function buildSkiSlope(ctx, tm, opts = {}) {
           normal = normalize( transformDirection( nw, viewMatrix ) );
           diffuseColor.rgb *= 0.965 + 0.07 * ( j0.y + 0.5 ) + gr * 0.045;
           roughnessFactor = mix( roughnessFactor, 0.70, vPiste * 0.6 );
-          // sparkle: rare bright grains where the fine noise peaks
+          // Sparkle: rare bright grains where the fine noise peaks. The sample
+          // domain is SHEARED, not axis-aligned — value noise read on a plane
+          // parallel to its own lattice prints a regular dot grid, which on
+          // ground this flat reads as a printed texture rather than as snow.
           if ( fineK > 0.01 ) {
-            float gl = vn( wp * 7.0 + vec3(2.7) );
-            float spark = smoothstep( 0.968, 0.996, gl ) * fineK;
+            vec3 gp = vec3( dot( wp, vec3(  6.1, 2.9, -1.7 ) ),
+                            dot( wp, vec3( -2.3, 5.4,  3.8 ) ),
+                            dot( wp, vec3(  3.3, -1.9, 6.7 ) ) );
+            float spark = smoothstep( 0.975, 0.998, vn( gp ) ) * fineK;
             diffuseColor.rgb += vec3( 0.22, 0.24, 0.28 ) * spark;
             roughnessFactor -= spark * 0.2;
           }
