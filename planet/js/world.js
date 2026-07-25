@@ -15,6 +15,7 @@ import { buildFoliage } from './foliage.js';
 import { buildTerrainDetail } from './terrainDetail.js';
 import { initBiomeCivs } from './biomeCivs.js';
 import { buildMonteRingger } from './monteringger.js';
+import { buildSkiSlope, skiLiftInteract } from './skislope.js';
 import { spawnAt } from './walk.js';
 import {
   updateInteract, fireInteract, currentFocus, clearInteractables,
@@ -30,6 +31,7 @@ let foliage = null;
 let terrainDetail = null;
 let biomeCivs = null;
 let monteRingger = null;
+let skiSlope = null;
 let zones = null;
 let tm = null;
 let ctx = null;
@@ -98,6 +100,17 @@ export async function buildWorld(context) {
     zoneUpdaters = zoneUpdaters.concat(monteRingger.updaters);
   }
 
+  // Val Feelgood — a ski resort on the cold plains: chairlift, summit rental
+  // shack, groomed piste with a terrain park, and a rideable snowboard. Placed
+  // clear of the settlements AND of Mont Le Ringger.
+  const skiAvoid = biomeCivs.sites.map((s) => s.dir).slice();
+  if (monteRingger) skiAvoid.push(monteRingger.dir);
+  skiSlope = buildSkiSlope(ctx, tm, { avoidDirs: skiAvoid });
+  if (skiSlope) {
+    compassEntries = compassEntries.concat(skiSlope.compass);
+    zoneUpdaters = zoneUpdaters.concat(skiSlope.updaters);
+  }
+
   await buildGallery(ctx, zones, tm);
   window.__tm = tm; // gallery grabs this to lazily register interior textures
   // Headless verification: open the dialogue for the nearest townsperson,
@@ -131,6 +144,7 @@ export function handleInteract() {
   if (isOverlayOpen()) { closeOverlays(); return; }
   if (galleryActive()) { galleryInteract(); return; }
   if (vehicleActive()) { exitVehicle(); return; }
+  if (skiLiftInteract()) return; // E mid-ride bails off the chairlift
   if (pendingTalk) {
     // Townsfolk hold a branching conversation (role dialogue trees); the lone
     // researchers at the far outposts still get the simple spoken card.
@@ -198,6 +212,7 @@ export function updateWorld(dt, t, camera) {
 export function resolveZoneJump(name) {
   if (!zones) return null;
   if (name === 'spawn') return { dir: zones.spawn, heading: NORTH };
+  if (name === 'ski') return skiSlope ? skiSlope.jump() : null;
   let dir = null;
   if (name === 'billboards') dir = zones.billboards[2];
   else if (name === 'interior' || name === 'gallery') dir = zones.gallery;

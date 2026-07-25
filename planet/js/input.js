@@ -7,6 +7,7 @@ export const input = {
   boost: false, // Shift = run
   jump: false, // Space
   interact: false, // E — edge-consumed by the interaction loop
+  camToggle: false, // C — edge-consumed by whoever owns the camera (snowboard)
   mouseX: 0, mouseY: 0, // accumulated delta since last consumed
   locked: false, // pointer lock (desktop)
   touch: false, // on-screen controls are live (touch.js) — iOS has no pointer lock
@@ -40,6 +41,9 @@ export function initInput(canvas, onInteract, onEscape) {
       if (!interactPressed && onInteract) onInteract();
       interactPressed = true;
     }
+    // edge flag: the consumer (snowboard camera toggle) resets it after reading,
+    // so a press while nothing consumes it is cleared on the next mount instead
+    else if (e.code === 'KeyC') input.camToggle = true;
   });
   addEventListener('keyup', (e) => {
     if (KEY[e.code]) input[KEY[e.code]] = false;

@@ -134,6 +134,8 @@ export function showDialogue(data) {
         if (b.dataset.back) { greeting(); return; }
         const o = options[+b.dataset.i];
         if (!o) return;
+        // a choice may carry a side effect (the ski shop equips a board here)
+        if (o.action) { try { o.action(); } catch (e) { console.error(e); } }
         if (o.end) { closeOverlays(); return; }
         render(o.say || '', o.then || [], true);
       });
