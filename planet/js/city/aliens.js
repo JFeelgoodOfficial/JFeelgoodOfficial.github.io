@@ -1,12 +1,13 @@
 /**
- * aliens.js — Procedurally generated humanoid citizens for explorable cities.
+ * aliens.js — Procedurally generated human citizens for explorable cities.
  *
- * Builds a deterministic crowd of alien humanoids that wander a city's streets
- * and plazas, avoid buildings and each other, steer gently around the player,
- * and can be talked to. Follows the game's procedural/deterministic/no-lights
+ * Builds a deterministic crowd of humans that wander a city's streets and
+ * plazas, avoid buildings and each other, steer gently around the player, and
+ * can be talked to. Follows the game's procedural/deterministic/no-lights
  * conventions: primitives only, MeshStandardMaterial, mulberry32 seeding,
- * Astronaut-style nested THREE.Group rig animated procedurally (no skeletal
- * glTF animation). Units are meters; a citizen is 1.5–2.3 units tall.
+ * nested THREE.Group rig animated procedurally (no skeletal glTF animation).
+ * Each citizen has human proportions (2 eyes, hair, matte skin + fabric
+ * clothing). Units are meters; a citizen is ~1.6–1.95 units tall.
  *
  * Coordinate assumptions: `host.groundHeightAt(x, z)` returns local ground
  * height at a planar (x,z) position within the city's unrotated object
@@ -43,17 +44,14 @@ const C = {
   impostorRadius: 0.28,         // capsule impostor radius
   impostorHeight: 1.7,          // capsule impostor cylinder height (excl. caps)
 
-  heightMin: 1.5,               // shortest citizen
-  heightMax: 2.3,               // tallest citizen
-  headScaleMin: 0.85,
-  headScaleMax: 1.25,
-  limbScaleMin: 0.85,
-  limbScaleMax: 1.2,
+  heightMin: 1.58,              // shortest citizen (human range)
+  heightMax: 1.95,              // tallest citizen
+  headScaleMin: 0.92,
+  headScaleMax: 1.06,
+  limbScaleMin: 0.92,
+  limbScaleMax: 1.08,
 
-  eyeCountWeights: [0.35, 0.35, 0.2, 0.1], // weights for 1..4 eyes
-  antennaeChance: 0.35,
-  crestChance: 0.3,
-  tailChance: 0.25,
+  baldChance: 0.12,
 
   gaitSpeedMin: 0.75,           // walk cycle speed multiplier
   gaitSpeedMax: 1.35,
@@ -72,12 +70,21 @@ const C = {
   talkTriggerDist: 2.4,          // nearestInteractable default search range fallback
   questChance: 0.28,             // fraction of citizens who carry a Quest
 
-  eyeEmissiveNight: 1.1,         // emissive intensity at night
-  eyeEmissiveDay: 0.15,          // emissive intensity at full day
+  eyeEmissiveNight: 1.1,         // emissive intensity at night (unused for humans)
+  eyeEmissiveDay: 0.15,
   trimEmissiveNight: 0.95,
   trimEmissiveDay: 0.1,
 
-  palette: [0xd4408f, 0x39e6d0, 0xf0a83c], // magenta / cyan / amber accent family
+  // Human wardrobe. Skin spans a broad realistic range; hair, shirts and
+  // trousers stay muted so crowds read as ordinary people, not neon.
+  skinTones: [0xf6d3b0, 0xecc19b, 0xe0ac82, 0xd39a6a, 0xc68642, 0xa9744f,
+              0x8d5524, 0x6b4423, 0xffe0bd, 0xd9a066],
+  hairTones: [0x0b0a08, 0x201509, 0x3b2a17, 0x5a3d22, 0x7a5230, 0x9a7b4f,
+              0xb8a06a, 0x2f2f33, 0x555559, 0x8a8a8f],
+  shirtTones: [0x3a4a63, 0x5a6b52, 0x7a4a44, 0x4a4a58, 0x8a7a55, 0x6a5a7a,
+               0x385a5a, 0xa08a70, 0x9a5a4a, 0x445a72],
+  trouserTones: [0x2a2f3a, 0x3a3128, 0x33383f, 0x4a4238, 0x2e3a34, 0x40384a,
+                 0x5a4a3a, 0x30343c],
 };
 
 // ---------------------------------------------------------------------------
@@ -232,33 +239,28 @@ export function buildRig(seed, cityId) {
   const height = THREE.MathUtils.lerp(C.heightMin, C.heightMax, rng());
   const headScale = THREE.MathUtils.lerp(C.headScaleMin, C.headScaleMax, rng());
   const limbScale = THREE.MathUtils.lerp(C.limbScaleMin, C.limbScaleMax, rng());
-  const buildWidth = THREE.MathUtils.lerp(0.8, 1.25, rng());
+  const buildWidth = THREE.MathUtils.lerp(0.9, 1.12, rng());
 
-  const skinColor = new THREE.Color().setHSL(rng(), 0.35 + rng() * 0.3, 0.35 + rng() * 0.25);
-  const skinMetal = rng() < 0.3;
-  const accent = new THREE.Color(pick(rng, C.palette));
-
-  const eyeCount = weightedIndex(rng, C.eyeCountWeights) + 1;
-  const headShape = pick(rng, ['round', 'elongated', 'angular', 'crested']);
-  const hasAntennae = rng() < C.antennaeChance;
-  const hasCrest = !hasAntennae && rng() < C.crestChance;
-  const hasTail = rng() < C.tailChance;
+  const skinColor = new THREE.Color(pick(rng, C.skinTones));
+  const hairColor = new THREE.Color(pick(rng, C.hairTones));
+  const shirtColor = new THREE.Color(pick(rng, C.shirtTones));
+  const trouserColor = new THREE.Color(pick(rng, C.trouserTones));
+  const bald = rng() < C.baldChance;
 
   const gaitSpeed = THREE.MathUtils.lerp(C.gaitSpeedMin, C.gaitSpeedMax, rng());
   const gaitPhase = rng() * Math.PI * 2;
 
-  const skinMat = new THREE.MeshStandardMaterial({
-    color: skinColor, roughness: skinMetal ? 0.35 : 0.75, metalness: skinMetal ? 0.6 : 0.05,
-  });
-  const clothMat = new THREE.MeshStandardMaterial({
-    color: accent.clone().multiplyScalar(0.5), roughness: 0.6, metalness: 0.1,
-    emissive: accent.clone(), emissiveIntensity: C.trimEmissiveDay,
-  });
-  const eyeMat = new THREE.MeshStandardMaterial({
-    color: accent.clone(), roughness: 0.3, metalness: 0.0,
-    emissive: accent.clone(), emissiveIntensity: C.eyeEmissiveDay,
-  });
+  // All matte, non-metallic, non-emissive: human skin + fabric. eyeMat/clothMat
+  // are still named so the day/night emissive pass in update() is a harmless
+  // no-op (their emissive stays black).
+  const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.82, metalness: 0.0 });
+  const clothMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.86, metalness: 0.0 }); // shirt
+  const trouserMat = new THREE.MeshStandardMaterial({ color: trouserColor, roughness: 0.88, metalness: 0.0 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.72, metalness: 0.0 });
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x151519, roughness: 0.3, metalness: 0.0 });
 
+  // Keep the original vertical scale basis (height/1.9) so the pre-tuned
+  // groundOffset + leg lengths still seat the feet on the terrain.
   const scaleY = height / 1.9;
 
   const root = new THREE.Group();
@@ -266,18 +268,19 @@ export function buildRig(seed, cityId) {
   const pelvis = new THREE.Group();
   pelvis.position.y = 0.95 * scaleY;
   root.add(pelvis);
-
-  const hipW = 0.22 * buildWidth * scaleY;
-  const pelvisMesh = new THREE.Mesh(new THREE.CapsuleGeometry(hipW, 0.12 * scaleY, 4, 6), skinMat);
+  const pelvisMesh = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.19 * buildWidth * scaleY, 0.1 * scaleY, 4, 8), trouserMat
+  );
   pelvis.add(pelvisMesh);
 
   const torso = new THREE.Group();
   torso.position.y = 0.18 * scaleY;
   pelvis.add(torso);
   const torsoMesh = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.24 * buildWidth * scaleY, 0.42 * scaleY, 4, 6), clothMat
+    new THREE.CapsuleGeometry(0.2 * buildWidth * scaleY, 0.44 * scaleY, 5, 10), clothMat
   );
-  torsoMesh.position.y = 0.28 * scaleY;
+  torsoMesh.position.y = 0.27 * scaleY;
+  torsoMesh.scale.z = 0.78; // flatten front-to-back so it reads as a chest, not a barrel
   torso.add(torsoMesh);
 
   const shoulders = new THREE.Group();
@@ -287,58 +290,64 @@ export function buildRig(seed, cityId) {
   const neck = new THREE.Group();
   neck.position.y = 0.52 * scaleY;
   torso.add(neck);
+  const neckMesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.05 * scaleY, 0.06 * scaleY, 0.09 * scaleY, 8), skinMat
+  );
+  neckMesh.position.y = 0.04 * scaleY;
+  neck.add(neckMesh);
 
   const head = new THREE.Group();
   neck.add(head);
-  let headGeo;
-  if (headShape === 'round') headGeo = new THREE.IcosahedronGeometry(0.16 * headScale * scaleY, 1);
-  else if (headShape === 'elongated') headGeo = new THREE.CapsuleGeometry(0.11 * headScale * scaleY, 0.18 * headScale * scaleY, 3, 6);
-  else if (headShape === 'angular') headGeo = new THREE.ConeGeometry(0.17 * headScale * scaleY, 0.3 * headScale * scaleY, 5);
-  else headGeo = new THREE.IcosahedronGeometry(0.15 * headScale * scaleY, 0);
-  const headMesh = new THREE.Mesh(headGeo, skinMat);
-  headMesh.position.y = 0.14 * headScale * scaleY;
+  const hy = 0.15 * headScale * scaleY;   // head center height above the neck
+  const hr = 0.135 * headScale * scaleY;  // head radius
+  const headMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(hr, 3), skinMat);
+  headMesh.position.y = hy;
+  headMesh.scale.set(0.92, 1.1, 0.98); // gently ovoid, human skull proportion
   head.add(headMesh);
 
-  const eyeGeo = new THREE.SphereGeometry(0.025 * headScale * scaleY, 6, 6);
-  const eyeR = 0.13 * headScale * scaleY;
-  for (let i = 0; i < eyeCount; i++) {
-    const t = eyeCount === 1 ? 0 : (i / (eyeCount - 1)) - 0.5;
+  // two forward-facing eyes
+  const eyeGeo = new THREE.SphereGeometry(0.02 * headScale * scaleY, 8, 8);
+  for (const sx of [-1, 1]) {
     const eye = new THREE.Mesh(eyeGeo, eyeMat);
-    eye.position.set(t * eyeR * 1.6, 0.16 * headScale * scaleY + (eyeCount > 2 ? (i % 2) * 0.05 * scaleY : 0), eyeR);
+    eye.position.set(sx * 0.048 * headScale * scaleY, hy + 0.012 * scaleY, hr * 0.85);
     head.add(eye);
   }
-
-  if (hasAntennae) {
-    const antGeo = new THREE.CylinderGeometry(0.006 * scaleY, 0.012 * scaleY, 0.22 * scaleY, 4);
-    for (const side of [-1, 1]) {
-      const ant = new THREE.Mesh(antGeo, clothMat);
-      ant.position.set(side * 0.08 * scaleY, 0.28 * headScale * scaleY, 0);
-      ant.rotation.z = side * 0.3;
-      head.add(ant);
-    }
-  } else if (hasCrest) {
-    const crestGeo = new THREE.ConeGeometry(0.05 * scaleY, 0.2 * scaleY, 4);
-    const crest = new THREE.Mesh(crestGeo, clothMat);
-    crest.position.y = 0.3 * headScale * scaleY;
-    crest.rotation.x = -0.3;
-    head.add(crest);
+  // a small nose so the face has a front
+  const nose = new THREE.Mesh(
+    new THREE.ConeGeometry(0.016 * headScale * scaleY, 0.05 * headScale * scaleY, 6), skinMat
+  );
+  nose.position.set(0, hy - 0.02 * scaleY, hr * 0.95);
+  nose.rotation.x = Math.PI * 0.5;
+  head.add(nose);
+  // hair cap (top-and-back dome)
+  if (!bald) {
+    const hair = new THREE.Mesh(
+      new THREE.SphereGeometry(hr * 1.05, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.6), hairMat
+    );
+    hair.position.set(0, hy + 0.012 * scaleY, -0.006 * scaleY);
+    hair.scale.set(1.0, 1.02, 1.06);
+    head.add(hair);
   }
 
   function buildArm(side) {
     const shoulder = new THREE.Group();
-    shoulder.position.set(side * 0.27 * buildWidth * scaleY, 0, 0);
+    shoulder.position.set(side * 0.23 * buildWidth * scaleY, 0, 0);
     shoulders.add(shoulder);
     const upperLen = 0.28 * limbScale * scaleY;
-    const upperMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.045 * limbScale * scaleY, upperLen, 3, 5), skinMat);
+    const upperMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.05 * limbScale * scaleY, upperLen, 4, 8), clothMat); // sleeve
     upperMesh.position.y = -upperLen * 0.5;
     shoulder.add(upperMesh);
     const elbow = new THREE.Group();
     elbow.position.y = -upperLen;
     shoulder.add(elbow);
     const lowerLen = 0.26 * limbScale * scaleY;
-    const lowerMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.038 * limbScale * scaleY, lowerLen, 3, 5), skinMat);
+    const lowerMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.038 * limbScale * scaleY, lowerLen, 4, 8), skinMat); // forearm
     lowerMesh.position.y = -lowerLen * 0.5;
     elbow.add(lowerMesh);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.048 * limbScale * scaleY, 6, 6), skinMat);
+    hand.position.y = -lowerLen;
+    hand.scale.set(1.0, 1.25, 0.6);
+    elbow.add(hand);
     return { shoulder, elbow };
   }
   const armL = buildArm(-1);
@@ -346,43 +355,35 @@ export function buildRig(seed, cityId) {
 
   function buildLeg(side) {
     const hip = new THREE.Group();
-    hip.position.set(side * 0.12 * buildWidth * scaleY, -0.06 * scaleY, 0);
+    hip.position.set(side * 0.1 * buildWidth * scaleY, -0.06 * scaleY, 0);
     pelvis.add(hip);
     const upperLen = 0.34 * limbScale * scaleY;
-    const upperMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.055 * limbScale * scaleY, upperLen, 3, 5), clothMat);
+    const upperMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.07 * limbScale * scaleY, upperLen, 4, 8), trouserMat);
     upperMesh.position.y = -upperLen * 0.5;
     hip.add(upperMesh);
     const knee = new THREE.Group();
     knee.position.y = -upperLen;
     hip.add(knee);
     const lowerLen = 0.32 * limbScale * scaleY;
-    const lowerMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.045 * limbScale * scaleY, lowerLen, 3, 5), skinMat);
+    const lowerMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.055 * limbScale * scaleY, lowerLen, 4, 8), trouserMat);
     lowerMesh.position.y = -lowerLen * 0.5;
     knee.add(lowerMesh);
+    const foot = new THREE.Mesh(
+      new THREE.BoxGeometry(0.1 * limbScale * scaleY, 0.06 * scaleY, 0.2 * limbScale * scaleY), skinMat
+    );
+    foot.position.set(0, -lowerLen - 0.01 * scaleY, 0.05 * scaleY);
+    knee.add(foot);
     return { hip, knee };
   }
   const legL = buildLeg(-1);
   const legR = buildLeg(1);
 
-  let tail = null;
-  if (hasTail) {
-    tail = new THREE.Group();
-    tail.position.set(0, 0.02 * scaleY, -0.2 * buildWidth * scaleY);
-    pelvis.add(tail);
-    const tailMesh = new THREE.Mesh(new THREE.ConeGeometry(0.04 * scaleY, 0.5 * limbScale * scaleY, 5), skinMat);
-    tailMesh.rotation.x = Math.PI * 0.55;
-    tailMesh.position.z = -0.2 * scaleY;
-    tail.add(tailMesh);
-  }
-
-  const totalHeightApprox = 0.95 * scaleY + 0.18 * scaleY + 0.52 * scaleY + 0.3 * headScale * scaleY;
-  root.position.y -= 0; // ground alignment handled by feet offset below
-  const groundOffset = 0.95 * scaleY - 0.11; // approx foot clearance so pelvis sits above ground correctly
+  const groundOffset = 0.95 * scaleY - 0.11; // unchanged: seats the feet on the ground
 
   return {
     group: root,
-    joints: { pelvis, torso, head, shoulders, armL, armR, legL, legR, tail },
-    materials: { skinMat, clothMat, eyeMat },
+    joints: { pelvis, torso, head, shoulders, armL, armR, legL, legR, tail: null },
+    materials: { skinMat, clothMat, eyeMat, hairMat, trouserMat },
     params: { height, gaitSpeed, gaitPhase, scaleY, groundOffset },
     cityId,
   };
@@ -548,7 +549,7 @@ export function createCrowd(host, opts = {}) {
 
   // Impostor instanced mesh (capsule) for all non-rig citizens
   const impostorGeo = new THREE.CapsuleGeometry(C.impostorRadius, C.impostorHeight, 3, 6);
-  const impostorMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, metalness: 0.05 });
+  const impostorMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0.0 });
   const impostorMesh = new THREE.InstancedMesh(impostorGeo, impostorMat, population);
   impostorMesh.frustumCulled = false;
   impostorMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(population * 3), 3);
@@ -557,7 +558,8 @@ export function createCrowd(host, opts = {}) {
   const colorTmp = new THREE.Color();
   for (let i = 0; i < population; i++) {
     const localRng = mulberry32(citizens[i].seed ^ 0x1234);
-    colorTmp.setHSL(localRng(), 0.4, 0.5);
+    // distant citizens tint to muted human clothing, matching the rig wardrobe
+    colorTmp.set(pick(localRng, C.shirtTones)).multiplyScalar(0.9);
     impostorMesh.setColorAt(i, colorTmp);
   }
   impostorMesh.instanceColor.needsUpdate = true;

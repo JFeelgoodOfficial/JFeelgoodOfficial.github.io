@@ -298,13 +298,17 @@ export function initBiomeCivs(planet, opts = {}) {
     settlements.length = 0;
   }
 
-  const controller = { sites, update, dispose, talkTarget, compassEntries };
+  const controller = {
+    sites, update, dispose, talkTarget, compassEntries,
+    debugCity: () => citySettlement,
+  };
 
   if (typeof window !== 'undefined') {
     window.__biomeCivs = {
       sites: () => sites.map((s) => ({ biome: s.biome, dist: surfaceDist(planet, LANDING_DIR.clone().normalize(), s.dir) })),
       siteDir: (biome) => { const s = sites.find((x) => x.biome === biome); return s ? s.dir.toArray() : null; },
       settlements: () => settlements.map((s) => ({ kind: s.kind, biome: s.biome, pop: s.crowd.count })),
+      city: () => citySettlement,
       economy: () => (citySettlement ? {
         season: citySettlement.economy.season,
         currency: citySettlement.economy.currency,

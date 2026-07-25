@@ -360,6 +360,47 @@ canvas.planet-canvas {
 .card-close:hover { color: var(--accent); }
 .card-stock { font-size: 12px; color: var(--accent); margin-top: 10px; letter-spacing: 0.1em; }
 
+/* ---------- citizen dialogue tree ---------- */
+
+.card-box.dialogue { min-width: min(420px, 88vw); }
+.dlg-say {
+  min-height: 3.4em;
+  font-style: italic;
+  color: var(--accent-soft);
+}
+.dlg-say p { margin: 0; }
+.dlg-choices {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dlg-choice {
+  text-align: left;
+  padding: 11px 15px;
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  background: rgba(245, 182, 66, 0.06);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.dlg-choice::before { content: "› "; color: var(--accent); }
+.dlg-choice:hover {
+  color: var(--accent-soft);
+  background: rgba(245, 182, 66, 0.14);
+  border-color: var(--accent);
+}
+.dlg-choice.ghost {
+  color: var(--text-muted);
+  background: transparent;
+  margin-top: 4px;
+}
+.dlg-choice.ghost::before { content: ""; }
+
 /* ---------- archive full-res viewer ---------- */
 
 .viewer-box { text-align: center; max-width: 94vw; }
