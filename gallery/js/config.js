@@ -77,41 +77,43 @@ export const SKY = {
   sunrise: {
     sunDir: new THREE.Vector3(-1, 0.075, 0.28).normalize(),
     sunColor: new THREE.Color(0xffd9a6),
-    sunIntensity: 2.6,
+    sunIntensity: 2.1,
     horizon: new THREE.Color(0xffc088),  // peach at the horizon
     horizonFar: new THREE.Color(0xd9b4b8), // horizon away from the sun: rose-grey
     zenith: new THREE.Color(0x5f8bc6),   // pale morning blue overhead
     glow: new THREE.Color(0xffb060),
     haze: 1.0,     // horizon band thickness
-    cloud: 0.35,   // cloud coverage
+    cloud: 0.45,   // cloud coverage
     cloudLit: new THREE.Color(0xffd7b0),
     cloudShade: new THREE.Color(0x9a86a0),
-    hemiSky: new THREE.Color(0xbcc9e6),
-    hemiGround: new THREE.Color(0x5a4a3c),
-    hemiIntensity: 0.55,
+    // the hemisphere stands in for bounce, and it reaches indoors where the sky
+    // cannot — so it is kept close to neutral or the wings turn peach
+    hemiSky: new THREE.Color(0xd6e0f2),
+    hemiGround: new THREE.Color(0x9a9086),
+    hemiIntensity: 0.6,
     seaDeep: new THREE.Color(0x0e2a3f),
     seaShallow: new THREE.Color(0x3d7a8a),
-    envIntensity: 0.9,
+    envIntensity: 0.8,
     space: 0,
   },
   sunset: {
     sunDir: new THREE.Vector3(0.18, 0.1, -1).normalize(),
     sunColor: new THREE.Color(0xff9a3c),
-    sunIntensity: 2.4,
-    horizon: new THREE.Color(0xff7a2a),  // deep orange
+    sunIntensity: 1.9,
+    horizon: new THREE.Color(0xf5843c),  // deep orange
     horizonFar: new THREE.Color(0xa06078),
     zenith: new THREE.Color(0x2a2454),   // violet overhead
-    glow: new THREE.Color(0xff5a1a),
+    glow: new THREE.Color(0xff6f2a),
     haze: 1.3,
-    cloud: 0.55,
+    cloud: 0.5,
     cloudLit: new THREE.Color(0xffb070),
     cloudShade: new THREE.Color(0x5a3a5a),
-    hemiSky: new THREE.Color(0x8c6a9c),
-    hemiGround: new THREE.Color(0x4a2e22),
-    hemiIntensity: 0.5,
+    hemiSky: new THREE.Color(0xc2b2c6),
+    hemiGround: new THREE.Color(0x8a7a70),
+    hemiIntensity: 0.55,
     seaDeep: new THREE.Color(0x14122c),
     seaShallow: new THREE.Color(0x6a4a5a),
-    envIntensity: 0.85,
+    envIntensity: 0.75,
     space: 0,
   },
   space: {
@@ -126,9 +128,9 @@ export const SKY = {
     cloud: 0,
     cloudLit: new THREE.Color(0x000000),
     cloudShade: new THREE.Color(0x000000),
-    hemiSky: new THREE.Color(0x3a4a7a),
-    hemiGround: new THREE.Color(0x101018),
-    hemiIntensity: 0.35,
+    hemiSky: new THREE.Color(0x4a5a80),
+    hemiGround: new THREE.Color(0x15181f),
+    hemiIntensity: 0.3,
     seaDeep: new THREE.Color(0x03040a),
     seaShallow: new THREE.Color(0x0c1226),
     envIntensity: 0.5,

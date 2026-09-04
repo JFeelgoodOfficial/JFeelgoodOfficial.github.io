@@ -168,10 +168,10 @@ function stoneSlabs(size) {
 function oiledOak(size) {
   const { alb, rgh, height } = bake(size, (u, v) => {
     const warp = fbm(u, v, 2, 3, 211) * 0.25;
-    const ring = Math.sin((v * 14 + warp * 6 + Math.sin(u * 6.2831) * 0.15) * 6.2831);
+    const ring = Math.sin((v * 34 + warp * 6 + Math.sin(u * 6.2831) * 0.15) * 6.2831);
     const grain = fbm(u, v, 48, 2, 223);
     const k = ring * 0.5 + 0.5;
-    const base = 0.42 + k * 0.16 + (grain - 0.5) * 0.06;
+    const base = 0.42 + k * 0.09 + (grain - 0.5) * 0.06;
     return {
       r: base + 0.14, g: base + 0.02, b: base - 0.12,
       rough: 0.5 + (1 - k) * 0.18 + (grain - 0.5) * 0.1,
@@ -197,11 +197,11 @@ export function createMaterials(quality = 'high') {
   const mats = {
     // repeats are set per-mesh via userData.tile (m per repeat) in building.js
     concreteFloor: new THREE.MeshStandardMaterial({
-      ...concrete, roughness: 1, metalness: 0.02, envMapIntensity: 1.0,
+      ...concrete, roughness: 1, metalness: 0.02, envMapIntensity: 0.4,
       normalScale: new THREE.Vector2(0.35, 0.35),
     }),
     plaster: new THREE.MeshStandardMaterial({
-      ...plaster, roughness: 1, metalness: 0, envMapIntensity: 0.6,
+      ...plaster, roughness: 1, metalness: 0, envMapIntensity: 0.22,
       normalScale: new THREE.Vector2(0.4, 0.4),
     }),
     stone: new THREE.MeshStandardMaterial({
@@ -212,7 +212,7 @@ export function createMaterials(quality = 'high') {
       ...oak, roughness: 1, metalness: 0, envMapIntensity: 0.7,
       normalScale: new THREE.Vector2(0.5, 0.5),
     }),
-    ceiling: new THREE.MeshStandardMaterial({ color: 0xf1efe9, roughness: 0.95, metalness: 0 }),
+    ceiling: new THREE.MeshStandardMaterial({ color: 0xf1efe9, roughness: 0.95, metalness: 0, envMapIntensity: 0.12 }),
     frame: new THREE.MeshStandardMaterial({ color: 0x1c1613, roughness: 0.42, metalness: 0.05, envMapIntensity: 0.8 }),
     frameLight: new THREE.MeshStandardMaterial({ color: 0xd8c9a8, roughness: 0.6, metalness: 0 }),
     plaque: new THREE.MeshStandardMaterial({ color: 0xf4f1ea, roughness: 0.7, metalness: 0 }),
@@ -222,7 +222,7 @@ export function createMaterials(quality = 'high') {
       color: 0xdfeef2, roughness: 0.06, metalness: 0, transparent: true, opacity: 0.22,
       envMapIntensity: 1.4, side: THREE.DoubleSide, depthWrite: false, reflectivity: 0.9,
     }),
-    lightStrip: new THREE.MeshStandardMaterial({ color: 0xfff4e0, emissive: 0xfff1d8, emissiveIntensity: 2.2, roughness: 1 }),
+    lightStrip: new THREE.MeshStandardMaterial({ color: 0xfff4e0, emissive: 0xfff1d8, emissiveIntensity: 1.6, roughness: 1 }),
     lightStripCool: new THREE.MeshStandardMaterial({ color: 0xf4f6ff, emissive: 0xe6ecff, emissiveIntensity: 1.6, roughness: 1 }),
     bookCloth: new THREE.MeshStandardMaterial({ color: 0x2b2420, roughness: 0.9 }),
     pages: new THREE.MeshStandardMaterial({ color: 0xf1e9d8, roughness: 0.95 }),

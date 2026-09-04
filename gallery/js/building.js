@@ -88,7 +88,7 @@ export function buildBuilding(scene, mats, opts = {}) {
     if (cur < a1) out.push([cur, a1]);
     return out;
   }
-  function column(x, z, h, r = 0.22, mat = mats.steel) {
+  function column(x, z, h, r = 0.22, mat = mats.plaster) {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 20), mat);
     m.position.set(x, h / 2, z);
     m.castShadow = true; m.receiveShadow = true;
@@ -186,10 +186,12 @@ export function buildBuilding(scene, mats, opts = {}) {
       glow.push(band);
     }
     // point lights down the two corridors
+    // The wings are sealed, so the sky environment is turned right down on the
+    // indoor materials (materials.js) and these carry the room instead.
     const step = quality === 'low' ? 21 : 14;
     for (let x = x0 + 7; x < x1 - 3; x += step) {
-      pointLight(x, H - 0.3, 3.6, quality === 'low' ? 70 : 42);
-      pointLight(x, H - 0.3, -3.6, quality === 'low' ? 70 : 42);
+      pointLight(x, H - 1.2, 3.6, quality === 'low' ? 95 : 66);
+      pointLight(x, H - 1.2, -3.6, quality === 'low' ? 95 : 66);
     }
     // benches
     for (let x = x0 + 22; x < x1 - 12; x += 26) { bench(x, 3.6); bench(x + 13, -3.6); }
@@ -285,11 +287,11 @@ export function buildBuilding(scene, mats, opts = {}) {
     box(x1 - x0 - 2 * T, 0.6, 0.5, (x0 + x1) / 2, H - 0.3, -(HW + T / 2), mats.plaster, { tile: 4, collide: false });
     for (const x of [x0 + 8, x0 + 20, x0 + 32]) column(x, -(HW + T / 2), H - 0.6, 0.24);
     // stone curb around the pool
-    box(px1 - px0 + 0.8, 0.35, 0.4, (px0 + px1) / 2, 0.175, pz0 - 0.2, mats.stone, { tile: 4 });
-    box(px1 - px0 + 0.8, 0.35, 0.4, (px0 + px1) / 2, 0.175, pz1 + 0.2, mats.stone, { tile: 4 });
-    box(0.4, 0.35, pz1 - pz0, px0 - 0.2, 0.175, (pz0 + pz1) / 2, mats.stone, { tile: 4 });
-    box(0.4, 0.35, pz1 - pz0, px1 + 0.2, 0.175, (pz0 + pz1) / 2, mats.stone, { tile: 4 });
-    const basin = new THREE.Mesh(new THREE.BoxGeometry(px1 - px0, 0.5, pz1 - pz0), new THREE.MeshStandardMaterial({ color: 0x0e1418, roughness: 0.6 }));
+    box(px1 - px0 + 0.8, 0.12, 0.4, (px0 + px1) / 2, 0.06, pz0 - 0.2, mats.stone, { tile: 4 });
+    box(px1 - px0 + 0.8, 0.12, 0.4, (px0 + px1) / 2, 0.06, pz1 + 0.2, mats.stone, { tile: 4 });
+    box(0.4, 0.12, pz1 - pz0, px0 - 0.2, 0.06, (pz0 + pz1) / 2, mats.stone, { tile: 4 });
+    box(0.4, 0.12, pz1 - pz0, px1 + 0.2, 0.06, (pz0 + pz1) / 2, mats.stone, { tile: 4 });
+    const basin = new THREE.Mesh(new THREE.BoxGeometry(px1 - px0, 0.5, pz1 - pz0), new THREE.MeshStandardMaterial({ color: 0x1b232a, roughness: 0.6 }));
     basin.position.set((px0 + px1) / 2, -0.25, (pz0 + pz1) / 2); root.add(basin);
     addBox(px0, px1, pz0, pz1); // you can't walk on water
     // Self Work slots on the north wall, facing the sunset

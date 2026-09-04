@@ -96,21 +96,21 @@ float starLayer(vec3 d, float scale, float thresh, float size) {
 vec3 spaceColor(vec3 d) {
   // galactic plane tilted across the sky
   vec3 gN = normalize(vec3(0.55, 0.6, -0.58));
-  float band = exp(-pow(dot(d, gN) * 5.5, 2.0));
+  float band = exp(-pow(dot(d, gN) * 7.5, 2.0));
   float dust = fbm(d * 4.0 + 5.0);
   float lanes = smoothstep(0.25, 0.7, fbm(d * 7.0 + 21.0));
   float mw = band * (0.25 + 0.75 * dust) * (0.35 + 0.65 * lanes);
-  vec3 mwCol = mix(vec3(0.55, 0.5, 0.75), vec3(0.95, 0.9, 0.85), dust) * mw * 0.9;
+  vec3 mwCol = mix(vec3(0.45, 0.42, 0.68), vec3(0.85, 0.82, 0.78), dust) * mw * 0.5;
 
   // a nebula low over the eastern sea
   vec3 nDir = normalize(vec3(0.75, 0.28, 0.6));
-  float nf = fbm(d * 2.6 + 11.0);
-  float neb = pow(nf, 2.6) * exp(-pow(length(d - nDir) * 1.9, 2.0)) * 1.8;
-  vec3 nebCol = mix(vec3(0.85, 0.25, 0.55), vec3(0.2, 0.55, 0.85), fbm3(d * 3.0 + 40.0)) * neb;
+  float nf = fbm(d * 3.4 + 11.0);
+  float neb = pow(nf, 3.0) * exp(-pow(length(d - nDir) * 3.4, 2.0)) * 2.4;
+  vec3 nebCol = mix(vec3(0.62, 0.12, 0.42), vec3(0.10, 0.34, 0.72), fbm3(d * 3.0 + 40.0)) * neb;
 
-  float stars = starLayer(d, 60.0, 0.86, 0.06) * 1.2
-              + starLayer(d, 120.0, 0.9, 0.05) * 0.7
-              + starLayer(d, 260.0, 0.93, 0.06) * 0.35;
+  float stars = starLayer(d, 60.0, 0.84, 0.06) * 1.5
+              + starLayer(d, 120.0, 0.88, 0.05) * 0.9
+              + starLayer(d, 260.0, 0.92, 0.06) * 0.45;
   stars *= 1.0 + 1.5 * band;               // denser along the plane
   vec3 starCol = mix(vec3(0.85, 0.9, 1.0), vec3(1.0, 0.9, 0.75), hash13(floor(d * 60.0)));
 
@@ -151,7 +151,9 @@ vec3 skyColor(vec3 d) {
     vec2 cp = d.xz / (y + 0.09);
     vec3 p = vec3(cp * 0.55 + vec2(uTime * 0.006, uTime * 0.002), uTime * 0.01);
     float n = fbm(p);
-    float cov = smoothstep(1.0 - uCloud * 0.85, 1.0 - uCloud * 0.85 + 0.42, n);
+    // fbm() lives in roughly 0.2 .. 0.8, so the threshold has to sit in there
+    float lo = mix(0.72, 0.34, uCloud);
+    float cov = smoothstep(lo, lo + 0.2, n);
     cov *= smoothstep(0.0, 0.14, y) * (1.0 - smoothstep(0.55, 1.0, y) * 0.5);
     float lit = pow(c, 2.5);
     // edges toward the sun catch light

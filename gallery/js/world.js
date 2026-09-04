@@ -50,7 +50,7 @@ export async function buildWorld(ctx) {
 
   // sea + court pool
   scene.add(createSea(C.SEA_Y));
-  scene.add(createPool(PLAN.court.x1 - PLAN.court.x0 - 16, 5, (PLAN.court.x0 + PLAN.court.x1) / 2, -0.12, -10.5));
+  scene.add(createPool(PLAN.court.x1 - PLAN.court.x0 - 16, 5, (PLAN.court.x0 + PLAN.court.x1) / 2, -0.05, -10.5));
 
   // lights
   sun = new THREE.DirectionalLight(0xffffff, 2.5);
@@ -66,6 +66,10 @@ export async function buildWorld(ctx) {
   scene.add(sun); scene.add(sun.target);
   hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5);
   scene.add(hemi);
+  // a flat neutral fill standing in for bounced light: it keeps the sealed
+  // wings from going dim once the sky environment is turned down on them, and
+  // outdoors it is swamped by the sun
+  scene.add(new THREE.AmbientLight(0xa6acb4, 0.28));
 
   // floor reflection (skipped on the low tier)
   reflector = createReflector(renderer, scene, { y: 0, scale: quality === 'high' ? 0.5 : 0.35 });
@@ -207,10 +211,11 @@ export function updateWorld(dt, t, camera) {
   if (name !== lastEnv) { scene.environment = envs[name]; lastEnv = name; }
   scene.environmentIntensity = cur.envIntensity;
 
-  // clerestory bands glow with the horizon colour
+  // clerestory bands take a washed-out version of the sky outside: a hint of
+  // daylight at the top of a windowless wall, not a neon strip
   for (const g of building.glow) {
-    g.material.emissive.copy(cur.horizon).lerp(cur.zenith, 0.3);
-    g.material.emissiveIntensity = 0.9 + 0.6 * (1 - cur.space);
+    g.material.emissive.copy(cur.horizon).lerp(cur.zenith, 0.65);
+    g.material.emissiveIntensity = 0.35 + 0.35 * (1 - cur.space);
   }
 
   // textures + interaction
