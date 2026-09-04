@@ -16,7 +16,7 @@ import { addInteractable, updateInteract, currentFocus } from './interact.js';
 import { initHud, showPrompt, hidePrompt, showCard, showHint, updateCompass, initCompassScratch, isOverlayOpen } from './hud.js';
 import { FEATURED, SELF_WORK, ARCHIVES, BOOKS, CARDS, LINKS } from './content.js';
 
-let art = null, reflector = null, building = null, sun = null, hemi = null, envs = null;
+let art = null, reflector = null, building = null, sun = null, hemi = null, ambient = null, envs = null;
 let scene = null, renderer = null;
 const compassEntries = [];
 const _fwd = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0), _p = new THREE.Vector3();
@@ -66,10 +66,15 @@ export async function buildWorld(ctx) {
   scene.add(sun); scene.add(sun.target);
   hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5);
   scene.add(hemi);
-  // a flat neutral fill standing in for bounced light: it keeps the sealed
-  // wings from going dim once the sky environment is turned down on them, and
-  // outdoors it is swamped by the sun
-  scene.add(new THREE.AmbientLight(0xa6acb4, 0.28));
+  // A flat neutral fill standing in for bounced light, so the sealed wings
+  // never crush fully to black between fixtures. Its own intensity — and the
+  // hemisphere and sky-environment intensities above — are damped hard while
+  // the visitor is actually inside a wing (see indoorFactor() in
+  // updateWorld): otherwise this ambient plus the sky-driven ambient outdoors
+  // is bright enough on its own to flatten the room, and the ceiling and
+  // track lights never read as the thing doing the lighting.
+  ambient = new THREE.AmbientLight(0xa6acb4, 0.28);
+  scene.add(ambient);
 
   // floor reflection (skipped on the low tier)
   reflector = createReflector(renderer, scene, { y: 0, scale: quality === 'high' ? 0.5 : 0.35 });
@@ -188,11 +193,27 @@ function setupCompass() {
 
 export function resolvePlace(name) { return PLACES[name] || null; }
 
+// 0 outside every wing, ramping to 1 over `margin` metres once past a
+// doorway. The wings are windowless, so nothing here should still be reading
+// the sky's ambient once the visitor is a few strides past the threshold —
+// the room's own fixtures need to be doing the actual lighting by then.
+function wingIndoor(x, x0, x1, margin) {
+  if (x <= x0 || x >= x1) return 0;
+  return Math.min(1, Math.min(x - x0, x1 - x) / margin);
+}
+function indoorFactor(x) {
+  return Math.max(
+    wingIndoor(x, PLAN.west.x0, PLAN.west.x1, 3),
+    wingIndoor(x, PLAN.east.x0, PLAN.east.x1, 3)
+  );
+}
+
 const _sunPos = new THREE.Vector3();
 export function updateWorld(dt, t, camera) {
   skyUniforms.uTime.value = t;
   const x = walker.pos.x;
   const cur = setSkyState(skyStateAt(x));
+  const indoors = indoorFactor(x);
 
   // sun + hemisphere follow the blended preset; the shadow frustum rides on the visitor
   sun.color.copy(cur.sunColor);
@@ -203,13 +224,16 @@ export function updateWorld(dt, t, camera) {
   sun.target.updateMatrixWorld();
   hemi.color.copy(cur.hemiSky);
   hemi.groundColor.copy(cur.hemiGround);
-  hemi.intensity = cur.hemiIntensity;
+  // the hemisphere light isn't shadow-mapped — walls don't block it — so it
+  // has to be damped by hand rather than relying on occlusion like the sun
+  hemi.intensity = THREE.MathUtils.lerp(cur.hemiIntensity, 0.05, indoors);
+  ambient.intensity = THREE.MathUtils.lerp(0.28, 0.08, indoors);
 
   // environment map: pick the dominant preset (swaps happen deep inside the wings)
   const w = cur.w;
   const name = w[0] >= w[1] && w[0] >= w[2] ? 'sunrise' : (w[1] >= w[2] ? 'sunset' : 'space');
   if (name !== lastEnv) { scene.environment = envs[name]; lastEnv = name; }
-  scene.environmentIntensity = cur.envIntensity;
+  scene.environmentIntensity = THREE.MathUtils.lerp(cur.envIntensity, 0.12, indoors);
 
   // clerestory bands take a washed-out version of the sky outside: a hint of
   // daylight at the top of a windowless wall, not a neon strip
