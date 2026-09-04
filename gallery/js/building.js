@@ -150,10 +150,10 @@ export function buildBuilding(scene, mats, opts = {}) {
   const PX0 = PLAN.terrace.x0 - 2, PX1 = PLAN.deck.x1 + 2;
   const PZ0 = Math.min(COURT_SOUTH_Z, -TERRACE_HALF_Z, -DECK_HALF_Z) - 2.5;
   const PZ1 = Math.max(HW + T, TERRACE_HALF_Z, DECK_HALF_Z) + 2.5;
-  const plinth = box(PX1 - PX0, 0 - C.SEA_Y + 0.6, PZ1 - PZ0, (PX0 + PX1) / 2, (C.SEA_Y - 0.6) / 2, (PZ0 + PZ1) / 2, mats.stone, { tile: 4, collide: false, cast: false });
+  const plinth = box(PX1 - PX0, 0 - C.SEA_Y + 0.6, PZ1 - PZ0, (PX0 + PX1) / 2, (C.SEA_Y - 0.6) / 2, (PZ0 + PZ1) / 2, mats.stoneWall, { tile: 4, collide: false, cast: false });
   plinth.position.y = (C.SEA_Y - 0.6 + 0) / 2 - 0.02; // top just under the floors
   // a stepped lower ledge so the headland reads as masonry, not a floating slab
-  box(PX1 - PX0 + 6, 1.2, PZ1 - PZ0 + 6, (PX0 + PX1) / 2, C.SEA_Y + 0.2, (PZ0 + PZ1) / 2, mats.stone, { tile: 4, collide: false, cast: false });
+  box(PX1 - PX0 + 6, 1.2, PZ1 - PZ0 + 6, (PX0 + PX1) / 2, C.SEA_Y + 0.2, (PZ0 + PZ1) / 2, mats.stoneWall, { tile: 4, collide: false, cast: false });
 
   // --- the two wings ---------------------------------------------------------
   const wings = [PLAN.west, PLAN.east];
@@ -260,7 +260,7 @@ export function buildBuilding(scene, mats, opts = {}) {
     railing(x0, x1 - T, -TERRACE_HALF_Z, -TERRACE_HALF_Z);
     railing(x0, x1 - T, TERRACE_HALF_Z, TERRACE_HALF_Z);
     // the wing's outer faces beyond its width close the terrace's inner edge
-    for (const s of [-1, 1]) box(T, 1.1, TERRACE_HALF_Z - HW - T, x1 - T / 2, 0.55, s * (HW + T + (TERRACE_HALF_Z - HW - T) / 2), mats.stone, { tile: 4 });
+    for (const s of [-1, 1]) box(T, 1.1, TERRACE_HALF_Z - HW - T, x1 - T / 2, 0.55, s * (HW + T + (TERRACE_HALF_Z - HW - T) / 2), mats.stoneWall, { tile: 4 });
     // the walkable terrace ends at the wing's west wall; the wing's own area
     // overlaps it by 1.2 m so the doorway threshold is inside both
     addArea(x0, x1 - T / 2, -TERRACE_HALF_Z, TERRACE_HALF_Z);
@@ -287,10 +287,10 @@ export function buildBuilding(scene, mats, opts = {}) {
     box(x1 - x0 - 2 * T, 0.6, 0.5, (x0 + x1) / 2, H - 0.3, -(HW + T / 2), mats.plaster, { tile: 4, collide: false });
     for (const x of [x0 + 8, x0 + 20, x0 + 32]) column(x, -(HW + T / 2), H - 0.6, 0.24);
     // stone curb around the pool
-    box(px1 - px0 + 0.8, 0.12, 0.4, (px0 + px1) / 2, 0.06, pz0 - 0.2, mats.stone, { tile: 4 });
-    box(px1 - px0 + 0.8, 0.12, 0.4, (px0 + px1) / 2, 0.06, pz1 + 0.2, mats.stone, { tile: 4 });
-    box(0.4, 0.12, pz1 - pz0, px0 - 0.2, 0.06, (pz0 + pz1) / 2, mats.stone, { tile: 4 });
-    box(0.4, 0.12, pz1 - pz0, px1 + 0.2, 0.06, (pz0 + pz1) / 2, mats.stone, { tile: 4 });
+    box(px1 - px0 + 0.8, 0.12, 0.4, (px0 + px1) / 2, 0.06, pz0 - 0.2, mats.stoneWall, { tile: 4 });
+    box(px1 - px0 + 0.8, 0.12, 0.4, (px0 + px1) / 2, 0.06, pz1 + 0.2, mats.stoneWall, { tile: 4 });
+    box(0.4, 0.12, pz1 - pz0, px0 - 0.2, 0.06, (pz0 + pz1) / 2, mats.stoneWall, { tile: 4 });
+    box(0.4, 0.12, pz1 - pz0, px1 + 0.2, 0.06, (pz0 + pz1) / 2, mats.stoneWall, { tile: 4 });
     const basin = new THREE.Mesh(new THREE.BoxGeometry(px1 - px0, 0.5, pz1 - pz0), new THREE.MeshStandardMaterial({ color: 0x1b232a, roughness: 0.6 }));
     basin.position.set((px0 + px1) / 2, -0.25, (pz0 + pz1) / 2); root.add(basin);
     addBox(px0, px1, pz0, pz1); // you can't walk on water
@@ -320,7 +320,7 @@ export function buildBuilding(scene, mats, opts = {}) {
     railing(x1, x1, -DECK_HALF_Z, DECK_HALF_Z);
     railing(x0 + T, x1, -DECK_HALF_Z, -DECK_HALF_Z);
     railing(x0 + T, x1, DECK_HALF_Z, DECK_HALF_Z);
-    for (const s of [-1, 1]) box(T, 1.1, DECK_HALF_Z - HW - T, x0 + T / 2, 0.55, s * (HW + T + (DECK_HALF_Z - HW - T) / 2), mats.stone, { tile: 4 });
+    for (const s of [-1, 1]) box(T, 1.1, DECK_HALF_Z - HW - T, x0 + T / 2, 0.55, s * (HW + T + (DECK_HALF_Z - HW - T) / 2), mats.stoneWall, { tile: 4 });
     // three lit display cases: books, the collectible cards, other worlds
     const prop = (geo, mat, x, y, z, ry = 0) => {
       const m = new THREE.Mesh(geo, mat);

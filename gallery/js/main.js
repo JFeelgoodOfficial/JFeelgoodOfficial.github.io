@@ -49,20 +49,25 @@ const post = createPost(renderer, { strength: 0.55, threshold: 1.0, knee: 0.5, q
 let running = false;
 const clock = new THREE.Clock();
 
+// The one place the quality tiers map to a device pixel ratio cap — applyQuality()
+// and onResize() both need this, and they used to compute it separately.
+function pixelRatioForTier(q) {
+  if (q === 'low') return 1;
+  return Math.min(devicePixelRatio, q === 'medium' ? 1.25 : C.MAX_PIXEL_RATIO);
+}
+
 function applyQuality(q) {
   quality = q;
+  renderer.setPixelRatio(pixelRatioForTier(q));
   if (q === 'high') {
-    renderer.setPixelRatio(Math.min(devicePixelRatio, C.MAX_PIXEL_RATIO));
     renderer.shadowMap.enabled = true;
     post.setEnabled(true); post.setQuality('high');
     setReflectionEnabled(true);
   } else if (q === 'medium') {
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.25));
     renderer.shadowMap.enabled = true;
     post.setEnabled(true); post.setQuality('medium');
     setReflectionEnabled(true);
   } else {
-    renderer.setPixelRatio(1);
     renderer.shadowMap.enabled = false;
     post.setEnabled(false);
     setReflectionEnabled(false);
@@ -155,7 +160,7 @@ function onResize() {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
-  renderer.setPixelRatio(quality === 'low' ? 1 : Math.min(devicePixelRatio, quality === 'medium' ? 1.25 : C.MAX_PIXEL_RATIO));
+  renderer.setPixelRatio(pixelRatioForTier(quality));
   post.setSize();
   resizeReflection();
 }

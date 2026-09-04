@@ -228,9 +228,15 @@ export function createMaterials(quality = 'high') {
     pages: new THREE.MeshStandardMaterial({ color: 0xf1e9d8, roughness: 0.95 }),
   };
 
-  // The polished floor takes a live planar reflection (reflector.js) that
-  // reflector.js injects via onBeforeCompile; keep a handle.
+  // The polished floor and the stone terraces take a live planar reflection
+  // (reflector.js) injected into the material object itself via
+  // onBeforeCompile — every mesh sharing that exact material gets the
+  // reflection, regardless of whether it's actually a floor. `stone` is also
+  // used for vertical/decorative surfaces (the plinth, return walls, the pool
+  // curb) that must NOT sample a reflection meant only for the y=0 plane, so
+  // they get their own clone that reflector.attach() never touches.
   mats.concreteFloor.userData.reflective = true;
+  mats.stoneWall = mats.stone.clone();
   return mats;
 }
 
