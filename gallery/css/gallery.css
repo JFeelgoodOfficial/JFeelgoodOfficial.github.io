@@ -1,4 +1,4 @@
-/* jfeelgood.com planet experience — loader, HUD, cards.
+/* jfeelgood.com walkable gallery — loader, HUD, cards.
    Palette mirrors the classic site: near-black + gold accent. */
 
 :root {
@@ -24,7 +24,7 @@ html, body {
   overflow: hidden;
 }
 
-canvas.planet-canvas {
+canvas.gallery-canvas {
   position: fixed;
   inset: 0;
   display: block;
@@ -495,7 +495,7 @@ html.touch .loader.stage-loading .loader-controls.touch-controls { display: flex
 
 /* ---------- on-screen controls (touch devices) ---------- */
 
-/* Built by planet/js/touch.js and appended to #hud, so it inherits
+/* Built by gallery/js/touch.js and appended to #hud, so it inherits
    #hud[hidden] and appears exactly when the world is entered. The layer itself
    never swallows events — only the stick and the buttons do — which leaves the
    canvas free to receive drag-to-look everywhere else. */

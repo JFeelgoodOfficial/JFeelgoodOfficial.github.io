@@ -1,5 +1,5 @@
 // All site content ported from the inline data in classic.html (formerly
-// index.html) and archives.html, so the planet shows exactly what the classic
+// index.html) and archives.html, so the gallery shows exactly what the classic
 // site shows. Image paths already exist in the repo under assets/images/.
 
 export const FEATURED = [

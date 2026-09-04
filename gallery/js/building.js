@@ -58,9 +58,11 @@ export function buildBuilding(scene, mats, opts = {}) {
     }
     uv.needsUpdate = true;
   }
-  function floor(x0, x1, z0, z1, mat, tile, y = 0, reflective = false) {
+  // A horizontal slab. `down` flips the normal for ceilings — the rotation has
+  // to happen before the translate, or the plane is mirrored through the origin.
+  function floor(x0, x1, z0, z1, mat, tile, y = 0, reflective = false, down = false) {
     const geo = new THREE.PlaneGeometry(x1 - x0, z1 - z0);
-    geo.rotateX(-Math.PI / 2);
+    geo.rotateX(down ? Math.PI / 2 : -Math.PI / 2);
     geo.translate((x0 + x1) / 2, y, (z0 + z1) / 2);
     uvWorld(geo, tile);
     const m = new THREE.Mesh(geo, mat);
@@ -146,7 +148,8 @@ export function buildBuilding(scene, mats, opts = {}) {
 
   // --- plinth and sea edge ---------------------------------------------------
   const PX0 = PLAN.terrace.x0 - 2, PX1 = PLAN.deck.x1 + 2;
-  const PZ0 = COURT_SOUTH_Z - 2.5, PZ1 = HW + T + 2.5;
+  const PZ0 = Math.min(COURT_SOUTH_Z, -TERRACE_HALF_Z, -DECK_HALF_Z) - 2.5;
+  const PZ1 = Math.max(HW + T, TERRACE_HALF_Z, DECK_HALF_Z) + 2.5;
   const plinth = box(PX1 - PX0, 0 - C.SEA_Y + 0.6, PZ1 - PZ0, (PX0 + PX1) / 2, (C.SEA_Y - 0.6) / 2, (PZ0 + PZ1) / 2, mats.stone, { tile: 4, collide: false, cast: false });
   plinth.position.y = (C.SEA_Y - 0.6 + 0) / 2 - 0.02; // top just under the floors
   // a stepped lower ledge so the headland reads as masonry, not a floating slab
@@ -159,8 +162,7 @@ export function buildBuilding(scene, mats, opts = {}) {
     const isWest = w === PLAN.west;
     // floor + ceiling
     floor(x0, x1, -HW, HW, mats.concreteFloor, 6, 0, true);
-    const ceil = floor(x0, x1, -HW, HW, mats.ceiling, 8, H);
-    ceil.geometry.rotateX(Math.PI); // face down
+    const ceil = floor(x0, x1, -HW, HW, mats.ceiling, 8, H, false, true);
     ceil.receiveShadow = false;
     // side walls (solid, windowless)
     wallX(x0 - T, x1 + T, HW + T / 2, []);
@@ -173,7 +175,7 @@ export function buildBuilding(scene, mats, opts = {}) {
     // roof slab
     box(x1 - x0 + 2 * T, RT, 2 * (HW + T), (x0 + x1) / 2, H + RT / 2, 0, mats.plaster, { tile: 4, collide: false });
     // spine partition, freestanding, lower than the ceiling
-    const sx0 = x0 + 14, sx1 = x1 - 14, SH = 4.3;
+    const sx0 = x0 + 12, sx1 = x1 - 12, SH = 4.3;
     box(sx1 - sx0, SH, 0.6, (sx0 + sx1) / 2, SH / 2, 0, mats.plaster, { tile: 4 });
     // light coves: two long warm strips, and a cool clerestory band that takes the sky's colour
     lightStrip(x0 + 1, x1 - 1, 4.1, H - 0.08);
@@ -206,7 +208,7 @@ export function buildBuilding(scene, mats, opts = {}) {
 
     // room name over the inner side of each door
     sign(isWest ? 'THE ARCHIVES  ·  2004 – 2013' : 'THE ARCHIVES  ·  2014 – 2025', x0 + 0.05, DOOR_H + 0.8, 3, Math.PI / 2, 0.55, { px: 110, tracking: 6 });
-    sign(isWest ? 'SUNSET COURT  →' : '←  SUNSET COURT', x1 - 0.05, DOOR_H + 0.8, -3, -Math.PI / 2, 0.5, { px: 110, tracking: 6 });
+    sign(isWest ? 'SUNSET COURT  →' : 'STAR DECK  →', x1 - 0.05, DOOR_H + 0.8, -3, -Math.PI / 2, 0.5, { px: 110, tracking: 6 });
 
     addArea(x0 - 1.2, x1 + 1.2, -HW, HW);
   }
@@ -229,21 +231,25 @@ export function buildBuilding(scene, mats, opts = {}) {
   // --- sunrise terrace (west) -----------------------------------------------
   {
     const { x0, x1 } = PLAN.terrace;
-    floor(x0, x1 + 0.6, -TERRACE_HALF_Z, TERRACE_HALF_Z, mats.stone, 4, 0, true);
+    // the terrace paving stops at the wing's west wall — the wing floor takes
+    // over from there, so the two slabs meet edge to edge instead of overlapping
+    floor(x0, x1, -TERRACE_HALF_Z, TERRACE_HALF_Z, mats.stone, 4, 0, true);
     // loggia: the wing roof carries on 9 m over the terrace on slim columns
     const cx0 = x1 - 9.5;
-    box(x1 - cx0 + T, RT, 2 * (HW + T) + 10, (cx0 + x1 + T) / 2, H + RT / 2, 0, mats.plaster, { tile: 4, collide: false });
-    for (const z of [-11.5, 0, 11.5]) column(cx0 + 0.6, z, H);
+    box(x1 - T - cx0, RT, 2 * (HW + T) + 10, (cx0 + x1 - T) / 2, H + RT / 2, 0, mats.plaster, { tile: 4, collide: false });
+    for (const z of [-12.5, 0, 12.5]) column(cx0 + 0.6, z, H);
     // two freestanding "sunrise walls" under the loggia carry the featured works, facing the sea
     const wx = cx0 + 3.2, WH = 4.6;
-    for (const [z0, z1] of [[-12.5, -3.2], [3.2, 12.5]]) {
+    for (const [z0, z1] of [[-12.3, -2.5], [2.5, 12.3]]) {
       box(0.5, WH, z1 - z0, wx, WH / 2, (z0 + z1) / 2, mats.plaster, { tile: 4 });
     }
-    slots.featured.push({ x: wx - 0.25, z: -9.6, yaw: -Math.PI / 2 }, { x: wx - 0.25, z: -6.1, yaw: -Math.PI / 2 });
-    slots.featured.push({ x: wx - 0.25, z: 5.2, yaw: -Math.PI / 2 }, { x: wx - 0.25, z: 8.6, yaw: -Math.PI / 2 }, { x: wx - 0.25, z: 12.0, yaw: -Math.PI / 2 });
+    // five featured works on the sea-facing (-x) faces; the low sunrise sun
+    // lights them straight on while the visitor stands with the sea behind them
+    slots.featured.push({ x: wx - 0.25, z: -9.0, yaw: -Math.PI / 2 }, { x: wx - 0.25, z: -5.0, yaw: -Math.PI / 2 });
+    slots.featured.push({ x: wx - 0.25, z: 4.1, yaw: -Math.PI / 2 }, { x: wx - 0.25, z: 7.4, yaw: -Math.PI / 2 }, { x: wx - 0.25, z: 10.7, yaw: -Math.PI / 2 });
     // rear faces: title lettering + a bench
-    sign('JFEELGOOD', wx + 0.27, 3.6, -7.85, Math.PI / 2, 0.9, { px: 150, tracking: 22 });
-    sign('Art, as an experience.', wx + 0.27, 2.6, -7.85, Math.PI / 2, 0.5, { px: 90, color: '#6a625a' });
+    sign('JFEELGOOD', wx + 0.27, 3.6, -7.4, Math.PI / 2, 0.9, { px: 150, tracking: 22 });
+    sign('Art, as an experience.', wx + 0.27, 2.6, -7.4, Math.PI / 2, 0.5, { px: 90, color: '#6a625a' });
     bench(x0 + 12, 0, false);
     bench(x0 + 12, 9, false);
     bench(x0 + 12, -9, false);
@@ -252,8 +258,10 @@ export function buildBuilding(scene, mats, opts = {}) {
     railing(x0, x1 - T, -TERRACE_HALF_Z, -TERRACE_HALF_Z);
     railing(x0, x1 - T, TERRACE_HALF_Z, TERRACE_HALF_Z);
     // the wing's outer faces beyond its width close the terrace's inner edge
-    for (const s of [-1, 1]) box(T, 1.1, TERRACE_HALF_Z - HW - T, x1 + T / 2, 0.55, s * (HW + T + (TERRACE_HALF_Z - HW - T) / 2), mats.stone, { tile: 4 });
-    addArea(x0, x1 + 1.2, -TERRACE_HALF_Z, TERRACE_HALF_Z);
+    for (const s of [-1, 1]) box(T, 1.1, TERRACE_HALF_Z - HW - T, x1 - T / 2, 0.55, s * (HW + T + (TERRACE_HALF_Z - HW - T) / 2), mats.stone, { tile: 4 });
+    // the walkable terrace ends at the wing's west wall; the wing's own area
+    // overlaps it by 1.2 m so the doorway threshold is inside both
+    addArea(x0, x1 - T / 2, -TERRACE_HALF_Z, TERRACE_HALF_Z);
     // low deck lights so the terrace still reads before the sun clears the water
     if (quality !== 'low') { pointLight(x0 + 20, 3.5, -10, 18, 0xffd9b0, 22); pointLight(x0 + 20, 3.5, 10, 18, 0xffd9b0, 22); }
   }
@@ -261,15 +269,22 @@ export function buildBuilding(scene, mats, opts = {}) {
   // --- sunset court (middle) ---------------------------------------------------
   {
     const { x0, x1 } = PLAN.court;
-    floor(x0, x1, COURT_SOUTH_Z, HW + T, mats.stone, 4, 0, true);
-    // north wall continues between the wings, with a deep canopy over the Self Work works
-    wallX(x0, x1, HW + T / 2, []);
-    box(x1 - x0, RT, 5.2, (x0 + x1) / 2, H + RT / 2, HW + T - 2.6, mats.plaster, { tile: 4, collide: false });
-    // beam linking the two wings along the court's south edge, on slim columns
-    box(x1 - x0, 0.6, 0.5, (x0 + x1) / 2, H - 0.3, -(HW + T / 2), mats.plaster, { tile: 4, collide: false });
-    for (const x of [x0 + 8, x0 + 20, x0 + 32]) column(x, -(HW + T / 2), H - 0.6, 0.24);
-    // reflecting pool, sunk, with a stone curb
+    // the paving is laid in four pieces around the pool so the sunk basin is
+    // not covered by its own floor
     const px0 = x0 + 8, px1 = x1 - 8, pz0 = -13, pz1 = -8;
+    const hx0 = px0 - 0.4, hx1 = px1 + 0.4, hz0 = pz0 - 0.4, hz1 = pz1 + 0.4;
+    floor(x0, x1, COURT_SOUTH_Z, hz0, mats.stone, 4, 0, true);
+    floor(x0, x1, hz1, HW + T, mats.stone, 4, 0, true);
+    floor(x0, hx0, hz0, hz1, mats.stone, 4, 0, true);
+    floor(hx1, x1, hz0, hz1, mats.stone, 4, 0, true);
+    // north wall continues between the wings (butting their side walls), with a
+    // deep canopy over the Self Work works
+    wallX(x0 + T, x1 - T, HW + T / 2, []);
+    box(x1 - x0 - 2 * T, RT, 5.2, (x0 + x1) / 2, H + RT / 2, HW + T - 2.6, mats.plaster, { tile: 4, collide: false });
+    // beam linking the two wings along the court's south edge, on slim columns
+    box(x1 - x0 - 2 * T, 0.6, 0.5, (x0 + x1) / 2, H - 0.3, -(HW + T / 2), mats.plaster, { tile: 4, collide: false });
+    for (const x of [x0 + 8, x0 + 20, x0 + 32]) column(x, -(HW + T / 2), H - 0.6, 0.24);
+    // stone curb around the pool
     box(px1 - px0 + 0.8, 0.35, 0.4, (px0 + px1) / 2, 0.175, pz0 - 0.2, mats.stone, { tile: 4 });
     box(px1 - px0 + 0.8, 0.35, 0.4, (px0 + px1) / 2, 0.175, pz1 + 0.2, mats.stone, { tile: 4 });
     box(0.4, 0.35, pz1 - pz0, px0 - 0.2, 0.175, (pz0 + pz1) / 2, mats.stone, { tile: 4 });
@@ -287,7 +302,11 @@ export function buildBuilding(scene, mats, opts = {}) {
     railing(x1, x1, COURT_SOUTH_Z, -(HW + T));
     bench(x0 + 6, -3, false);
     bench(x1 - 6, -3, false);
-    addArea(x0 - 1.2, x1 + 1.2, COURT_SOUTH_Z, HW);
+    // the court proper, plus a threshold rectangle at each wing door (the wings'
+    // own areas reach 1.2 m into the court, so the two always overlap)
+    addArea(x0, x1, COURT_SOUTH_Z, HW);
+    addArea(x0 - 1.2, x0 + 1.2, -5.4, -0.6);
+    addArea(x1 - 1.2, x1 + 1.2, 0.6, 5.4);
     pointLight((x0 + x1) / 2, H - 0.4, HW - 1.5, 26, 0xffd0a0, 30);
   }
 
@@ -295,19 +314,42 @@ export function buildBuilding(scene, mats, opts = {}) {
   const cases = [];
   {
     const { x0, x1 } = PLAN.deck;
-    floor(x0 - 0.6, x1, -DECK_HALF_Z, DECK_HALF_Z, mats.stone, 4, 0, true);
+    floor(x0, x1, -DECK_HALF_Z, DECK_HALF_Z, mats.stone, 4, 0, true);
     railing(x1, x1, -DECK_HALF_Z, DECK_HALF_Z);
     railing(x0 + T, x1, -DECK_HALF_Z, -DECK_HALF_Z);
     railing(x0 + T, x1, DECK_HALF_Z, DECK_HALF_Z);
-    for (const s of [-1, 1]) box(T, 1.1, DECK_HALF_Z - HW - T, x0 - T / 2, 0.55, s * (HW + T + (DECK_HALF_Z - HW - T) / 2), mats.stone, { tile: 4 });
+    for (const s of [-1, 1]) box(T, 1.1, DECK_HALF_Z - HW - T, x0 + T / 2, 0.55, s * (HW + T + (DECK_HALF_Z - HW - T) / 2), mats.stone, { tile: 4 });
     // three lit display cases: books, the collectible cards, other worlds
+    const prop = (geo, mat, x, y, z, ry = 0) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z); m.rotation.y = ry;
+      m.castShadow = true; m.receiveShadow = true;
+      root.add(m);
+      return m;
+    };
     const mk = (x, z, label) => {
       const base = box(1.6, 0.9, 1.0, x, 0.45, z, mats.blackSteel, {});
       const top = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.9, 0.9), mats.glass);
       top.position.set(x, 1.35, z); root.add(top);
       const strip = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.03, 0.8), mats.lightStrip);
       strip.position.set(x, 0.92, z); root.add(strip);
-      const l = pointLight(x, 1.6, z, 6, 0xfff0dc, 8);
+      pointLight(x, 1.6, z, 6, 0xfff0dc, 8);
+      // something to actually look at under the glass
+      if (label === 'books') {
+        for (let i = 0; i < 2; i++) {
+          const w = 0.3, h = 0.05, d = 0.42;
+          prop(new THREE.BoxGeometry(w, h, d), mats.bookCloth, x - 0.24 + i * 0.48, 0.965 + i * 0.001, z, i ? 0.18 : -0.12);
+          prop(new THREE.BoxGeometry(w - 0.03, h * 0.7, d - 0.03), mats.pages, x - 0.24 + i * 0.48, 0.965 + i * 0.001, z, i ? 0.18 : -0.12);
+        }
+      } else if (label === 'collect') {
+        for (let i = 0; i < 3; i++) {
+          const card = prop(new THREE.BoxGeometry(0.16, 0.24, 0.012), mats.pages, x - 0.4 + i * 0.4, 1.07, z - 0.05, -0.25 + i * 0.25);
+          card.rotation.x = -0.22;
+        }
+      } else {
+        prop(new THREE.BoxGeometry(0.26, 0.5, 0.26), mats.blackSteel, x, 1.19, z, 0.5);
+        prop(new THREE.SphereGeometry(0.13, 20, 14), mats.steel, x, 1.58, z);
+      }
       cases.push({ x, z, y: 1.3, label, base });
       return base;
     };
@@ -324,8 +366,8 @@ export function buildBuilding(scene, mats, opts = {}) {
     }
     pointLight(x0 + 10, 3.5, 0, 22, 0xd8e2ff, 30);
     pointLight(x0 + 28, 3.5, 0, 22, 0xd8e2ff, 30);
-    sign('STAR DECK', x0 + 0.27, DOOR_H + 0.8, -3, Math.PI / 2, 0.55, { px: 110, tracking: 10, color: '#e9e4d8' });
-    addArea(x0 - 1.2, x1, -DECK_HALF_Z, DECK_HALF_Z);
+    sign('STAR DECK', x0 + T + 0.05, DOOR_H + 0.8, -3, Math.PI / 2, 0.55, { px: 110, tracking: 10, color: '#e9e4d8' });
+    addArea(x0 + T / 2, x1, -DECK_HALF_Z, DECK_HALF_Z);
   }
 
   return { root, slots, lights, glow, floors, cases };

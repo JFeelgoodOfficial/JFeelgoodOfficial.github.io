@@ -70,12 +70,12 @@ export async function buildWorld(ctx) {
   // floor reflection (skipped on the low tier)
   reflector = createReflector(renderer, scene, { y: 0, scale: quality === 'high' ? 0.5 : 0.35 });
   if (quality === 'low') reflector.setEnabled(false);
-  reflector.attach(mats.concreteFloor, 0.9);
-  reflector.attach(mats.stone, 0.55);
+  reflector.attach(mats.concreteFloor, 0.55);
+  reflector.attach(mats.stone, 0.4);
+  // the reflective floors are the only things hidden from the mirrored pass —
+  // the sky dome and the sea have to stay in it, or the wet stone outdoors
+  // reflects nothing.
   for (const f of building.floors) reflector.exclude(f);
-  reflector.exclude(dome); // the sky is re-derived analytically by the water; the floor should still see it
-  // (the dome is excluded only from being hidden — keep it visible in the pass)
-  building.floors.length && reflector.exclude(building.floors[0]) && null;
 
   progress(0.6, 'hanging the paintings…');
   art = createArt(scene, mats, renderer, { quality });

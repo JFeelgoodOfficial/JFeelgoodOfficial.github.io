@@ -1,9 +1,8 @@
 // Proximity texture manager. The archive gallery hangs 186 paintings; loading
 // every 700px WebP at once would cost ~700 MB of VRAM, so panels load their
 // texture only when the camera is near and dispose it when far, with a hard
-// cap on how many stay resident. Generalizes the game's galleryTexture cache
-// (stations.js). Also downscales oversized art (opt/ 1200px) to a max
-// dimension via a canvas.
+// cap on how many stay resident. Also downscales oversized art (the 1200px
+// opt/ images) to a max dimension via a canvas.
 //
 // Each panel is a { mesh, url, worldPos, loadDist, keepDist, maxDim,
 // anisotropy, onSize } record. onSize(w, h) is called once the real pixel size

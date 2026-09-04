@@ -5,13 +5,13 @@
   <title>JFeelgood Art — Paintings, Books &amp; Limited Edition Cards</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23050509'/%3E%3Ccircle cx='16' cy='16' r='9' fill='%23f5b642'/%3E%3C/svg%3E">
-  <meta name="description" content="The art of JFeelgood – paintings, series, and books born from 20 years of creative self-work. Explore the work as a walkable 3D planet.">
+  <meta name="description" content="The art of JFeelgood – paintings, series, and books born from 20 years of creative self-work. Explore the work as a walkable 3D gallery.">
   <link rel="canonical" href="https://jfeelgood.com/" />
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://jfeelgood.com/">
   <meta property="og:site_name" content="JFeelgood Art">
   <meta property="og:title" content="JFeelgood Art — Paintings, Books &amp; Limited Edition Cards">
-  <meta property="og:description" content="Paintings, series, and books born from 20 years of creative self-work. Original works, the Self Work series, and limited-edition collectible art cards — explorable as a first-person 3D planet.">
+  <meta property="og:description" content="Paintings, series, and books born from 20 years of creative self-work. Original works, the Self Work series, and limited-edition collectible art cards — explorable as a first-person, walkable 3D gallery.">
   <meta property="og:image" content="https://jfeelgood.com/assets/images/opt/og-jfeelgood.jpg">
   <meta property="og:image:alt" content="Dreamfall, a painting by JFeelgood">
   <meta name="twitter:card" content="summary_large_image">
@@ -107,8 +107,8 @@
   }
   </script>
 
-  <!-- Device probe. Phones are no longer redirected: they get the same title
-       screen, then the world with on-screen controls at a lighter quality tier.
+  <!-- Device probe. Phones are not redirected: they get the same title screen,
+       then the gallery with on-screen controls at a lighter quality tier.
        html.touch drives the CSS and the boot budget; only a missing WebGL2
        context still forces the classic-only card. Runs before anything heavy
        loads. -->
@@ -135,8 +135,8 @@
   <script type="importmap">
   {
     "imports": {
-      "three": "./planet/vendor/three.module.min.js",
-      "three/addons/": "./planet/vendor/addons/"
+      "three": "./gallery/vendor/three.module.min.js",
+      "three/addons/": "./gallery/vendor/addons/"
     }
   }
   </script>
@@ -144,14 +144,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="planet/css/planet.css" />
+  <link rel="stylesheet" href="gallery/css/gallery.css" />
   <script defer src="https://cdn.vercel-insights.com/v1/script.js"></script>
 </head>
 <body>
   <noscript>
     <div class="noscript-card">
       <h1>JFeelgood — Art, as an experience.</h1>
-      <p>The homepage is an explorable 3D planet and needs JavaScript. All of the
+      <p>The homepage is a walkable 3D gallery and needs JavaScript. All of the
          work — featured paintings, the Self Work series, books, and limited-edition
          art cards — is also on the classic site:</p>
       <p><a href="classic.html">Enter the classic site →</a> ·
@@ -164,7 +164,7 @@
     <div class="nogl-inner">
       <div class="nogl-title">JFEELGOOD</div>
       <p>This experience needs a browser with WebGL2.<br>
-         Everything on the planet also lives on the classic site.</p>
+         Everything in the gallery also lives on the classic site.</p>
       <a class="nogl-btn" href="classic.html">Visit the classic site →</a>
     </div>
   </div>
@@ -174,31 +174,32 @@
        and the control legend. main.js flips it. -->
   <div id="loader" class="loader stage-choice">
     <div class="loader-inner">
-      <div class="loader-kicker">an explorable world</div>
+      <div class="loader-kicker">a walkable gallery</div>
       <div class="loader-title">JFEELGOOD</div>
       <div class="loader-sub">Art, as an experience.</div>
 
       <!-- stage: choice -->
       <div class="title-choices">
-        <button id="enter-world" class="title-btn" type="button">ENTER THE WORLD</button>
+        <button id="enter-world" class="title-btn" type="button">ENTER THE GALLERY</button>
         <a id="go-classic" class="title-btn ghost" href="classic.html">CLASSIC SITE</a>
       </div>
       <div class="title-note">
-        <span>A walkable 3D planet — paintings in the open, a gallery rotunda,
-              vehicles, and settlements out in the wilds.</span>
+        <span>A first-person gallery on a headland above the sea — every painting
+              hung, from a sunrise terrace through two long wings to a deck under
+              deep space.</span>
         <span>Or browse the same work the traditional way.</span>
       </div>
 
       <!-- stage: loading -->
       <div class="loader-bar"><div id="loader-fill" class="loader-fill"></div></div>
-      <div id="loader-status" class="loader-status">forming the planet…</div>
-      <button id="enter-btn" class="enter-btn" hidden>STEP ONTO THE PLANET</button>
+      <div id="loader-status" class="loader-status">opening the doors…</div>
+      <button id="enter-btn" class="enter-btn" hidden>STEP INSIDE</button>
       <div class="loader-controls" id="loader-controls">
         <span><b>W A S D</b> walk</span>
         <span><b>SHIFT</b> run</span>
         <span><b>SPACE</b> jump</span>
         <span><b>MOUSE</b> look</span>
-        <span><b>E</b> interact</span>
+        <span><b>E</b> view a work</span>
         <span><b>ESC</b> release mouse</span>
       </div>
       <div class="loader-controls touch-controls" id="loader-controls-touch">
@@ -206,7 +207,7 @@
         <span><b>DRAG</b> look</span>
         <span><b>▲</b> jump</span>
         <span><b>RUN</b> sprint</span>
-        <span><b>ACT</b> interact</span>
+        <span><b>ACT</b> view a work</span>
       </div>
     </div>
   </div>
@@ -227,6 +228,6 @@
   <div id="card" class="card-overlay" hidden></div>
   <div id="viewer" class="viewer-overlay" hidden></div>
 
-  <script type="module" src="planet/js/main.js"></script>
+  <script type="module" src="gallery/js/main.js"></script>
 </body>
 </html>

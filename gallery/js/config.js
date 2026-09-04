@@ -32,9 +32,9 @@ export const C = {
   ROOF_T: 0.6,
   HANG_Y: 1.62,         // painting centre height
   ART_MAX: 2.1,         // max painting dimension (m)
-  ART_MAX_FEATURED: 3.2,
-  ART_MAX_SELFWORK: 2.6,
-  SLOT_STEP: 3.3,       // wall spacing between paintings
+  ART_MAX_FEATURED: 2.8,
+  ART_MAX_SELFWORK: 2.4,
+  SLOT_STEP: 3.0,       // wall spacing between paintings (186 works have to fit)
   SEA_Y: -7,            // sea surface (the gallery stands on a headland plinth)
 };
 
@@ -66,9 +66,9 @@ export const SPAWN = { x: -128, z: 0, heading: -Math.PI / 2 }; // heading: yaw, 
 // Named jump points for ?debug=at:<name> and the compass.
 export const PLACES = {
   terrace: { x: -130, z: 0, heading: -Math.PI / 2, label: 'SUNRISE TERRACE' },
-  west:    { x: -70, z: 0, heading: Math.PI / 2, label: 'WEST WING' },
+  west:    { x: -70, z: 3.5, heading: Math.PI / 2, label: 'WEST WING' },
   court:   { x: -8, z: 0, heading: Math.PI, label: 'SUNSET COURT' },
-  east:    { x: 54, z: 0, heading: Math.PI / 2, label: 'EAST WING' },
+  east:    { x: 54, z: 3.5, heading: Math.PI / 2, label: 'EAST WING' },
   deck:    { x: 116, z: 0, heading: Math.PI / 2, label: 'STAR DECK' },
 };
 

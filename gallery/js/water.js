@@ -56,8 +56,9 @@ void main() {
   float nz = fbm3(np + vec3(0.0, e, 0.0));
   g += vec2(nx - n0, nz - n0) / e * (0.06 - uCalm * 0.045);
   // flatten with distance so the far sea doesn't sparkle with aliasing
-  float flat = smoothstep(120.0, 1800.0, dist);
-  g *= (1.0 - flat * 0.92);
+  // (`flat` itself is a reserved word in GLSL ES 3.0 — hence the name)
+  float far = smoothstep(120.0, 1800.0, dist);
+  g *= (1.0 - far * 0.92);
   vec3 N = normalize(vec3(-g.x, 1.0, -g.y));
 
   vec3 R = reflect(-V, N);
@@ -76,7 +77,7 @@ void main() {
   vec3 H = normalize(V + uSunDir);
   float NdH = max(dot(N, H), 0.0);
   float glint = pow(NdH, 900.0) * 3.0 + pow(NdH, 80.0) * 0.12;
-  col += uSunColor * glint * uSunIntensity * (1.0 - flat * 0.6);
+  col += uSunColor * glint * uSunIntensity * (1.0 - far * 0.6);
 
   // fade the far sea into the sky at the horizon
   vec3 hdir = normalize(vec3(-V.x, 0.004, -V.z));

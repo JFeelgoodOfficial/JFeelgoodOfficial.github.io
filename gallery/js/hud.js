@@ -1,7 +1,7 @@
 // DOM HUD: the E-prompt, the shared info card, the full-resolution archive
 // viewer, and the compass strip. Opening any overlay releases the pointer lock
 // (so the cursor can click links/close); closing it re-locks and resumes the
-// walk. All styling lives in planet/css/planet.css.
+// walk. All styling lives in gallery/css/gallery.css.
 
 import { resetTouch, touchActive } from './touch.js';
 
@@ -11,8 +11,8 @@ let relock = () => {};
 let onClose = () => {};
 
 // Every prompt goes through showPrompt() and every control legend through
-// showHint(), so this is the one place that has to know the keyboard glyphs
-// baked into zones.js / vehicles.js / world.js aren't what a phone shows.
+// showHint(), so this is the one place that has to know that the keyboard
+// glyphs baked into world.js / art.js aren't what a phone shows.
 // Longest phrases first — "Shift run" has to be caught before a bare "SHIFT".
 const GLYPHS = [
   [/W A S D to walk/g, 'STICK to walk'],

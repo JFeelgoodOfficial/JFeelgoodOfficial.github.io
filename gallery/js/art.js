@@ -4,12 +4,15 @@
 // frame instance is re-fitted to the true aspect ratio the moment the image
 // size is known.
 //
-// Colour fidelity: the renderer tone-maps with the Khronos "neutral" curve,
-// which is identity below 0.76 and compresses above. Paintings must not be
-// compressed, so their shader applies the exact inverse of that curve before
-// output — after tone mapping they land back on the original pixel values.
-// They also write alpha 0 into the HDR buffer, which the bloom's bright pass
-// reads as "never glow" (post.js), so a white canvas stays a white canvas.
+// Colour fidelity: the picture is tone-mapped with the Khronos "neutral"
+// curve, which is identity below 0.76 and compresses above. Paintings must not
+// be compressed, so their shader applies the inverse of that curve before
+// output — after tone mapping they land back on the original pixel values. The
+// inversion is unconditional: with bloom on, the scene is drawn into a linear
+// render target (where three.js compiles tone mapping out) and post.js applies
+// the same curve at composite time, so both paths need it.
+// The paintings also write alpha 0 into the HDR buffer, which the bloom's
+// bright pass reads as "never glow" (post.js), so a white canvas stays white.
 
 import * as THREE from 'three';
 import { C } from './config.js';
@@ -37,6 +40,8 @@ vec3 invNeutral(vec3 c) {
 
 export function createArt(scene, mats, renderer, opts = {}) {
   const quality = opts.quality || 'high';
+  // shared by every painting shader: the exposure the final tone map will use
+  const artExposure = { value: renderer.toneMappingExposure };
   const tm = makeTextureManager(renderer, { maxResident: quality === 'low' ? 28 : 64, hz: 4 });
 
   const MAX = 260;
@@ -50,17 +55,16 @@ export function createArt(scene, mats, renderer, opts = {}) {
 
   const artGeo = new THREE.PlaneGeometry(1, 1);
   const entries = [];
-  const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _p = new THREE.Vector3(), _s = new THREE.Vector3();
+  const _m = new THREE.Matrix4(), _s = new THREE.Vector3();
 
   function makeArtMaterial() {
     const m = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: true });
     m.onBeforeCompile = (shader) => {
+      shader.uniforms.uArtExposure = artExposure;
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\n' + INV_NEUTRAL)
+        .replace('#include <common>', '#include <common>\nuniform float uArtExposure;\n' + INV_NEUTRAL)
         .replace('#include <opaque_fragment>', /* glsl */`
-          #if defined( TONE_MAPPING )
-            outgoingLight = invNeutral(outgoingLight) / toneMappingExposure;
-          #endif
+          outgoingLight = invNeutral(outgoingLight) / uArtExposure;
           #include <opaque_fragment>
           gl_FragColor.a = 0.0; // bloom mask: paintings never glow`);
     };
@@ -87,13 +91,13 @@ export function createArt(scene, mats, renderer, opts = {}) {
 
     const idx = frames.count++;
     const e = { group, art, work, pos, n, idx, maxDim, border, depth, w: maxDim * 0.75, h: maxDim * 0.75 };
-    _q.setFromEuler(new THREE.Euler(0, slot.yaw, 0));
+    const rot = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, slot.yaw, 0));
 
     function layout(w, h) {
       e.w = w; e.h = h;
       art.scale.set(w, h, 1);
       _s.set(w + border * 2, h + border * 2, depth);
-      _m.compose(pos, _q, _s);
+      _m.compose(pos, rot, _s);
       frames.setMatrixAt(idx, _m);
       frames.instanceMatrix.needsUpdate = true;
       if (e.plaque) e.plaque.position.set(w / 2 + 0.35, -(h / 2) + 0.2, 0.01);
@@ -140,6 +144,7 @@ export function createArt(scene, mats, renderer, opts = {}) {
 
   return {
     hang, entries, frames,
+    setExposure: (v) => { artExposure.value = v; },
     update: (camPos, now) => tm.update(camPos, now),
   };
 }

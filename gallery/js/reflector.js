@@ -40,6 +40,13 @@ export function createReflector(renderer, scene, opts = {}) {
 
   const hidden = []; // objects excluded from the reflection pass (the floors themselves)
   let enabled = true;
+  // Shared by every material the reflection is injected into. It is forced to 0
+  // for the duration of the mirrored pass: the stone that samples this texture
+  // is also *in* the pass, and sampling the target you are drawing into is a
+  // feedback loop.
+  const uReflectOn = { value: 1 };
+  const uReflectTex = { value: rt.texture };
+  const uReflectMat = { value: textureMatrix };
 
   function setSize() {
     renderer.getDrawingBufferSize(_size);
@@ -84,22 +91,24 @@ export function createReflector(renderer, scene, opts = {}) {
     p.elements[14] = clipPlane.w;
 
     for (const o of hidden) o.visible = false;
+    uReflectOn.value = 0;
     const prevTarget = renderer.getRenderTarget();
     renderer.setRenderTarget(rt);
     renderer.state.buffers.depth.setMask(true);
     if (renderer.autoClear === false) renderer.clear();
     renderer.render(scene, virtualCamera);
     renderer.setRenderTarget(prevTarget);
+    uReflectOn.value = 1;
     for (const o of hidden) o.visible = true;
   }
 
   // Inject the reflection into a MeshStandardMaterial. Call once per material.
   function attach(material, strength = 0.85) {
     material.onBeforeCompile = (shader) => {
-      shader.uniforms.tReflect = { value: rt.texture };
-      shader.uniforms.uReflectMatrix = { value: textureMatrix };
+      shader.uniforms.tReflect = uReflectTex;
+      shader.uniforms.uReflectMatrix = uReflectMat;
       shader.uniforms.uReflectStrength = { value: strength };
-      shader.uniforms.uReflectOn = { value: enabled ? 1 : 0 };
+      shader.uniforms.uReflectOn = uReflectOn;
       material.userData.shader = shader;
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', '#include <common>\nuniform mat4 uReflectMatrix;\nvarying vec4 vReflectUv;')
@@ -127,16 +136,12 @@ export function createReflector(renderer, scene, opts = {}) {
 
   function setEnabled(v) {
     enabled = !!v;
-    // materials compiled earlier pick the flag up through their uniform
-    for (const m of attachedMaterials) if (m.userData.shader) m.userData.shader.uniforms.uReflectOn.value = enabled ? 1 : 0;
+    // every attached material shares the one flag uniform
+    uReflectOn.value = enabled ? 1 : 0;
     if (!enabled) rt.setSize(2, 2); else setSize();
   }
-  const attachedMaterials = [];
-  const attachTracked = (m, s) => { attachedMaterials.push(m); attach(m, s); };
-
   return {
-    update, setSize, setEnabled,
-    attach: attachTracked,
+    update, setSize, setEnabled, attach,
     exclude: (obj) => hidden.push(obj),
     get enabled() { return enabled; },
     texture: rt.texture,

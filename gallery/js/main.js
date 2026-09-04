@@ -92,6 +92,9 @@ function startLoad() {
   buildWorld({ scene, renderer, camera, quality, progress: setProgress, relock: () => lockPointer(canvas) })
     .then(() => {
       if (statusEl) statusEl.textContent = '';
+      // the world is built; now switch the renderer itself to the tier
+      // (?q=low has to actually turn the reflection, bloom and shadows off)
+      applyQuality(quality);
       startRenderLoop();
       if (DEBUG) { enterWorld(); return; }
       if (TOUCH) enterWorld();

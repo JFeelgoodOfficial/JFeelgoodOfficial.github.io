@@ -4,10 +4,13 @@
 // applies neither tone mapping nor the sRGB transfer when the target is a
 // texture, so the buffer holds true scene-linear radiance. A soft-knee bright
 // pass, a separable Gaussian ping-pong at half resolution, then a composite
-// that adds the bloom and only THEN tone-maps (the renderer's ACES curve and
-// exposure via <tonemapping_fragment>) and converts to sRGB. Disabled, render()
-// draws straight to the canvas and the renderer tone-maps as usual, so both
-// paths grade identically — bloom just glows on top.
+// that adds the bloom and only THEN tone-maps (the renderer's Khronos neutral
+// curve and exposure, via <tonemapping_fragment>) and converts to sRGB.
+// Disabled, render() draws straight to the canvas and the renderer tone-maps as
+// usual, so both paths grade identically — bloom just glows on top.
+//
+// The bright pass multiplies its weight by the scene buffer's alpha, which is
+// the paintings' opt-out: art.js writes alpha 0 so a white canvas never glows.
 
 import * as THREE from 'three';
 
@@ -29,10 +32,12 @@ uniform float uThreshold;
 uniform float uKnee;
 varying vec2 vUv;
 void main() {
-  vec3 c = texture2D(uScene, vUv).rgb;
+  vec4 src = texture2D(uScene, vUv);
+  vec3 c = src.rgb;
   float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
   float soft = clamp((l - uThreshold + uKnee) / (2.0 * uKnee), 0.0, 1.0);
   float w = max(soft * soft, step(uThreshold, l));
+  w *= src.a; // alpha is the bloom mask: paintings (alpha 0) never glow
   // clamp runaway values (the sun disc) so one pixel can't flood the blur
   gl_FragColor = vec4(min(c * w, vec3(40.0)), 1.0);
 }
