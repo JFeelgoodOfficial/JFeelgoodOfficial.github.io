@@ -40,10 +40,10 @@ export function createReflector(renderer, scene, opts = {}) {
 
   const hidden = []; // objects excluded from the reflection pass (the floors themselves)
   let enabled = true;
-  // Shared by every material the reflection is injected into. It is forced to 0
+  // Shared by every material the reflection is injected into. Both are cleared
   // for the duration of the mirrored pass: the stone that samples this texture
-  // is also *in* the pass, and sampling the target you are drawing into is a
-  // feedback loop.
+  // is also *in* that pass, and binding the target you are drawing into — even
+  // behind a branch that never samples it — is a feedback loop.
   const uReflectOn = { value: 1 };
   const uReflectTex = { value: rt.texture };
   const uReflectMat = { value: textureMatrix };
@@ -92,6 +92,7 @@ export function createReflector(renderer, scene, opts = {}) {
 
     for (const o of hidden) o.visible = false;
     uReflectOn.value = 0;
+    uReflectTex.value = null;
     const prevTarget = renderer.getRenderTarget();
     renderer.setRenderTarget(rt);
     renderer.state.buffers.depth.setMask(true);
@@ -99,6 +100,7 @@ export function createReflector(renderer, scene, opts = {}) {
     renderer.render(scene, virtualCamera);
     renderer.setRenderTarget(prevTarget);
     uReflectOn.value = 1;
+    uReflectTex.value = rt.texture;
     for (const o of hidden) o.visible = true;
   }
 
@@ -136,6 +138,7 @@ export function createReflector(renderer, scene, opts = {}) {
 
   function setEnabled(v) {
     enabled = !!v;
+    uReflectTex.value = rt.texture;
     // every attached material shares the one flag uniform
     uReflectOn.value = enabled ? 1 : 0;
     if (!enabled) rt.setSize(2, 2); else setSize();
