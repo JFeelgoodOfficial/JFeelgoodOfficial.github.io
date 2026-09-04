@@ -1,26 +1,55 @@
 # jfeelgood.com
 
-Static site for JFeelgood — paintings, the Self Work series, books, and limited-edition collectible art cards. Served from this repository (GitHub Pages user site, custom domain jfeelgood.com).
+Static site for JFeelgood — paintings, the Self Work series, books, limited-edition collectible art cards, and the worlds and games being built alongside them. Served from this repository (GitHub Pages user site, custom domain jfeelgood.com). No build step: every page is plain HTML, CSS and ES modules.
 
 ## Pages
 
-- `index.html` — the title screen and the explorable 3D planet (Three.js/WebGL2). Every visitor lands on a title screen offering **ENTER THE WORLD** or **CLASSIC SITE**; nothing heavy loads until the world is chosen. Bootstraps `planet/js/main.js`; the on-terrain content zones (billboards, gallery rotunda, Self Work, books, collect, NOVA), a vehicle **garage** (drone/plane/tank/motorcycle — walk up and press E to pilot, third-person chase cam), and streaming biome foliage (forest/desert/plains/alpine) all live under `planet/js/`. Only browsers without WebGL2 are sent to the classic-only card.
-- **Mobile.** Phones and tablets run the same world. A head probe in `index.html` sets `html.touch` on touch-primary devices (`pointer: coarse` **and** `hover: none`, so touchscreen laptops keep the desktop path). `planet/js/touch.js` then draws an on-screen thumbstick, drag-to-look, and ▲/RUN/ACT buttons that write into the same `input` singleton the keyboard fills — so `walk.js`, `gallery.js` and `vehicles.js` are untouched. Touch also boots the `low` quality tier (pixel ratio 1, no shadows, no bloom) with reduced dressing and foliage budgets. `hud.js` swaps the keyboard glyphs in prompts, hints and card copy for their on-screen equivalents.
-- **Val Feelgood ski resort.** `planet/js/skislope.js` self-sites a snow mountain on the cold plains (same site-scan pattern as Mont Le Ringger, biased toward the ice caps): one pure height function is the mesh, the collision floor and the scatter — including the groomed piste, three kickers and a half-pipe carved into it. A rideable chairlift (ambient looping chairs; E at the base station to board, auto-unload at the summit) leads to the Summit Shack, where a dialogue rents a **snowboard** — a vehicle whose def carries its own physics (gravity along the slope gradient, carving, momentum-driven air off the lips), with C toggling first/third-person. The resort registers a snow-biased weather region and exposes `window.__skiSlope` (teleports, `drop()`, `probe()`); `?debug=at:ski` jumps to the base lodge.
-- **Query params** (all on `index.html`): `?debug` skips the title screen and enters the world headlessly, exposing `window.__debug` (`walk`, `input`, `quality()`, `sim(seconds)`, `interact()`); `?debug=at:<zone>` jumps to a zone (`at:ski` for the resort); `?fly` is a noclip camera; `?touch` / `?notouch` force the mobile path on or off for testing.
-- `classic.html` — single-page gallery: hero (Dreamfall), featured works carousel, story of growth carousel, Collect section (limited-edition cards), archives promo, Self Work carousel, books, about, NOVA 7.
+- `index.html` — the title screen and the walkable 3D gallery (Three.js r165, WebGL2). Every visitor lands on a title screen offering **ENTER THE GALLERY** or **CLASSIC SITE**; nothing heavy loads until the gallery is chosen. Bootstraps `gallery/js/main.js`. Only browsers without WebGL2 are sent to the classic-only card.
+- `classic.html` — the traditional page, one section per thing being made: featured paintings, the gallery, the archives, the Self Work series, books, Collect (limited-edition cards), iExploreArt, Prototown, Driftbound, NOVA 7, the story of growth, about. Tall bold white "thoughts" (`p.thought`) sit between sections as copy, while each section keeps its own small `h2`.
 - `archives.html` — "Archives Wall": masonry grid of 186 paintings (2004–2025), rendered from lazy-loaded WebP thumbnails that click through to full-resolution originals.
-- `llms.txt` — machine-readable summary for AI crawlers. Keep it in sync with the real pages and products.
-- `robots.txt` / `sitemap.xml` — standard crawl config.
+- `llms.txt` — machine-readable summary for AI crawlers and answer engines. Keep it in sync with the real pages, products and projects.
+- `robots.txt` / `sitemap.xml` — crawl config; AI crawlers are explicitly allowed.
+- `CLAUDE.md` — conventions and how-tos for anyone (or any agent) editing the site.
+
+## The gallery (`gallery/`)
+
+A first-person building on a stone headland above the sea, running west→east along +x (metres):
+
+| Zone | x | Type | Sky seen | Hangs |
+|---|---|---|---|---|
+| Sunrise Terrace | −150…−112 | open loggia | sunrise over the water (sun low in the west) | the 5 featured works on two freestanding walls facing the sea |
+| West Wing | −112…−28 | indoor, windowless | none (light coves + a sky-tinted clerestory glow) | archive paintings, first half |
+| Sunset Court | −28…12 | roofless, open to the southern sea, reflecting pool | sunset (sun low to the south) | the 8 Self Work paintings on the north wall under a canopy |
+| East Wing | 12…96 | indoor | none | archive paintings, second half |
+| Star Deck | 96…134 | open deck | deep space: Milky Way, nebula, stars | three lit cases: books, art cards, other worlds |
+
+How it works, by module (all under `gallery/js/`):
+
+- `config.js` — every tunable: walker, plan (`PLAN` x-ranges), `skyStateAt(x)`, `SPAWN`, `PLACES`, and the three `SKY` presets.
+- `sky.js` — one procedural dome. `skyColor(dir)` in GLSL (atmosphere, sun disc, fbm clouds, stars/Milky Way/nebula) shared through `SKY_GLSL`; `setSkyState(s)` blends the presets (0 sunrise, 1 sunset, 2 space) into shared uniforms; `bakeEnvironments()` PMREMs one environment map per preset for the PBR materials. The state follows the visitor's x, and the blend zones lie inside the windowless wings so the sky never changes in view.
+- `water.js` — sea and court pool: animated normals, Fresnel between deep water and `skyColor(reflected ray)`, sun glitter, horizon fade.
+- `materials.js` — procedural PBR textures drawn into canvases at load (polished concrete, lime plaster, sawn limestone slabs, oiled oak): tileable lattice noise → albedo, roughness and normal maps.
+- `building.js` — the geometry (boxes, columns, glass balustrades, benches, light strips, display cases), collision boxes and walkable areas (via `walker.js`), the hanging slots per zone, indoor point lights, signage.
+- `art.js` — hangs a work: unlit art plane + one shared `InstancedMesh` of frames, re-fitted to the true aspect ratio once the image loads; plaques and wall lettering. The paintings apply the exact inverse of the renderer's Neutral tone curve and write alpha 0 so they display at true colours and never bloom.
+- `reflector.js` — planar reflection for the floors, injected into `MeshStandardMaterial` (Fresnel-weighted, roughness-blurred via mip bias).
+- `post.js` — HDR bloom (half-float scene target → soft-knee bright pass masked by alpha → separable blur → composite, then tone mapping + sRGB).
+- `walker.js` — flat first-person walker with AABB collision; `input.js` / `touch.js` feed it (keyboard + pointer lock, or thumbstick + drag-to-look + ▲/RUN/ACT buttons).
+- `textures.js` — proximity texture streaming so 199 paintings don't all sit in VRAM. `interact.js` — proximity and centre-screen raycast interactables (E-prompt). `hud.js` — prompt, info card, full-res viewer, compass. `content.js` — all copy and image paths (FEATURED, SELF_WORK, STORY, BOOKS, CARDS, LINKS, ARCHIVES).
+- `world.js` — assembly and the per-frame update; `main.js` — renderer (Neutral tone mapping), loader stages, pointer lock, quality tiers, debug hooks.
+
+Query params on `index.html`: `?debug` skips the title screen and exposes `window.__debug` (`teleport(x,z)`, `goto('court')`, `look(yaw,pitch)`, `sim(seconds)`, `frame()`); `?debug=at:<terrace|west|court|east|deck>`; `?q=low|medium|high` forces a quality tier; `?touch` / `?notouch` force the mobile path. `window.__hung` reports how many works got a slot.
+
+Quality tiers: `high` (bloom, 2048 shadows, floor reflection at half res), `medium`, `low` (no bloom, no shadows, no reflection, pixel ratio 1). Touch devices boot on `low`; desktops drop a tier automatically if the first seconds run under 30 fps.
 
 ## Assets
 
-- `assets/images/` — full-resolution originals (kept as the archive of record; referenced by pages only as click-through targets).
-- `assets/images/opt/` — 1200px-wide WebP derivatives used by index.html, plus `og-jfeelgood.jpg` (social share image).
-- `assets/images/archives/thumbs/` — 700px-wide WebP thumbnails used by the archives grid.
-- `assets/images/cards/` — 640px WebP product shots for the Collect section (sourced from the minicuration repo).
+- `assets/images/` — full-resolution originals (archive of record; referenced only as click-through targets).
+- `assets/images/opt/` — 1200px WebP derivatives used by the pages and the gallery's featured/Self Work panels, plus `og-jfeelgood.jpg`.
+- `assets/images/archives/thumbs/` — 700px WebP thumbnails used by the archives grid and the gallery wings.
+- `assets/images/cards/` — 640px WebP product shots for Collect.
+- `assets/images/projects/` — 1400px WebP images for the project sections on the classic site.
 
-Derivatives are generated with Pillow (resize + WebP). If you add a new painting image, add an optimized copy in the matching derivative folder and reference that from the HTML.
+Derivatives were generated with Pillow or sharp (resize + WebP). When adding a painting, add an optimized copy to the matching folder and reference that.
 
 ## Commerce
 
@@ -32,4 +61,4 @@ The Collect section sells limited-edition art cards (editions of 50, $23) fulfil
 
 ## Styling
 
-`classic.html` and `archives.html` keep their CSS inline in each page's `<style>` block; the world's CSS lives in `planet/css/planet.css` (title screen, HUD, cards, the `#touch` control layer, and the `html.touch` / `@media` mobile rules). Fonts: Cormorant Garamond + DM Sans via Google Fonts (linked in `<head>`). Dark palette on index.html (`--accent: #f5b642`), light paper palette on archives.html.
+`classic.html` and `archives.html` keep their CSS inline in each page's `<style>` block; the gallery's CSS lives in `gallery/css/gallery.css` (title screen, HUD, cards, the `#touch` control layer, and the `html.touch` / `@media` mobile rules). Fonts: Cormorant Garamond + DM Sans via Google Fonts. Dark palette with gold accent (`--accent: #f5b642`) on index and classic; light paper palette on archives.
