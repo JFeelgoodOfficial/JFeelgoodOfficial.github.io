@@ -104,29 +104,32 @@ export async function buildWorld(ctx) {
 // let the loader repaint between heavy synchronous steps
 function tick() { return new Promise((r) => setTimeout(r, 16)); }
 
+// art.hang() returns null both when a category runs out of wall slots and
+// when the shared frame InstancedMesh hits its own cap (art.js) — either way
+// a hang didn't happen, so window.__hung has to count real successes, not
+// just how far a loop got, or a shortfall anywhere can go unreported.
+function hangCategory(name, works, slotsFor, hangOne) {
+  let n = 0;
+  for (let i = 0; i < works.length; i++) {
+    const s = slotsFor[i];
+    if (!s) break;
+    if (hangOne(s, works[i])) n++;
+  }
+  if (n < works.length) console.warn(`gallery: ${works.length - n} ${name} work(s) did not get hung (wall slots or the shared frame limit ran out)`);
+  return n;
+}
+
 function hangEverything() {
   const { slots } = building;
-  FEATURED.forEach((w, i) => {
-    const s = slots.featured[i];
-    if (!s) return;
+  const featured = hangCategory('featured', FEATURED, slots.featured, (s, w) =>
     art.hang({ ...s, y: 2.0 }, { ...w, thumb: w.img, full: w.img, kicker: 'Featured work' },
-      { maxDim: C.ART_MAX_FEATURED, maxH: 3.0, border: 0.06, depth: 0.09, plaque: true, card: true, loadDist: 140, keepDist: 170, tag: 'featured' });
-  });
-  SELF_WORK.forEach((w, i) => {
-    const s = slots.selfwork[i];
-    if (!s) return;
+      { maxDim: C.ART_MAX_FEATURED, maxH: 3.0, border: 0.06, depth: 0.09, plaque: true, card: true, loadDist: 140, keepDist: 170, tag: 'featured' }));
+  const selfwork = hangCategory('self-work', SELF_WORK, slots.selfwork, (s, w) =>
     art.hang({ ...s, y: 1.9 }, { ...w, thumb: w.img, full: w.img, kicker: 'Self Work series · 2021' },
-      { maxDim: C.ART_MAX_SELFWORK, border: 0.06, depth: 0.09, plaque: true, card: true, loadDist: 70, keepDist: 90, tag: 'selfwork' });
-  });
-  let n = 0;
-  for (let i = 0; i < ARCHIVES.length; i++) {
-    const s = slots.archive[i];
-    if (!s) break;
-    art.hang(s, ARCHIVES[i], { maxDim: C.ART_MAX, border: 0.045, depth: 0.07, loadDist: 32, keepDist: 46, tag: 'archive' });
-    n++;
-  }
-  if (n < ARCHIVES.length) console.warn(`gallery: ${ARCHIVES.length - n} archive works did not get a wall slot`);
-  window.__hung = { featured: Math.min(FEATURED.length, slots.featured.length), selfwork: Math.min(SELF_WORK.length, slots.selfwork.length), archive: n, slots: slots.archive.length };
+      { maxDim: C.ART_MAX_SELFWORK, border: 0.06, depth: 0.09, plaque: true, card: true, loadDist: 70, keepDist: 90, tag: 'selfwork' }));
+  const archive = hangCategory('archive', ARCHIVES, slots.archive, (s, w) =>
+    art.hang(s, w, { maxDim: C.ART_MAX, border: 0.045, depth: 0.07, loadDist: 32, keepDist: 46, tag: 'archive' }));
+  window.__hung = { featured, selfwork, archive, slots: slots.archive.length };
 }
 
 function setupCases() {
