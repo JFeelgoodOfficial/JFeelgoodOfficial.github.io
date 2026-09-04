@@ -1,18 +1,27 @@
 # JFeelgood
 
-> Original paintings, mixed media, books, and limited-edition collectible art cards by JFeelgood — an Austin, Texas-based artist with over 18 years of creative work across hundreds of paintings, five published books, five music albums, and a video game.
+> Original paintings, the Self Work series, books, limited-edition collectible art cards, and a set of worlds and games being built by JFeelgood — an Austin, Texas-based artist with over 18 years of creative work across hundreds of paintings, five published books, five music albums, and video games. The homepage is a walkable first-person 3D gallery in which every painting hangs.
 
-JFeelgood creates one-of-a-kind original artworks that explore identity, resilience, solitude, ego, and the human experience. Work spans acrylic, mixed media, gold leaf, epoxy resin, spray paint, and found materials on canvas and wood.
+JFeelgood creates one-of-a-kind original artworks that explore identity, resilience, solitude, ego, and the human experience. Work spans acrylic, mixed media, gold leaf, epoxy resin, spray paint, and found materials on canvas and wood. Alongside the paintings, JFeelgood builds software: virtual galleries, browser games, and world-building projects.
 
 ## Site Pages
 
-- [Home](https://jfeelgood.com/): A title screen offering two ways in — the world, or the classic site. The world is an explorable first-person 3D planet (WebGL; desktop with keyboard and mouse, phones and tablets with on-screen touch controls at a reduced detail level). Walk a golden world where featured paintings stand as giant billboards, the 186-work archive hangs inside a gallery rotunda, and the Self Work series, books, and art cards each have their own place on the terrain. A garage on the terrain houses four drivable/flyable vehicles — a UAV drone, a plane, a tank, and a motorcycle — for exploring the hills, mountains, forests, deserts, and lakes.
-- [Classic Site](https://jfeelgood.com/classic.html): The same content as a traditional page — featured paintings, the Self Work series, the story of the artist's growth, books, and limited-edition art cards. Chosen from the title screen at any time, and served automatically to visitors whose browser lacks WebGL2.
+- [Home — The Gallery](https://jfeelgood.com/): A title screen offering two ways in — the gallery, or the classic site. The gallery is a first-person 3D building on a stone headland above the sea (WebGL; desktop with keyboard and mouse, phones and tablets with on-screen touch controls). It runs west to east: a Sunrise Terrace where the five featured paintings hang facing the dawn over the water; the West Wing and East Wing, two long indoor rooms holding all 186 archive paintings on polished concrete floors; the Sunset Court between them, roofless and open to the southern sea, where the eight Self Work paintings hang under a canopy in low evening light beside a reflecting pool; and the Star Deck at the far end under deep space — the Milky Way, a nebula, and stars — with lit cases for the books, the art cards, and the other worlds being built. Pressing E (or the ACT button) on a painting opens it at full resolution.
+- [Classic Site](https://jfeelgood.com/classic.html): The same work as a traditional page, organised as one section per thing being made — featured paintings, the gallery, the archives, the Self Work series, books, collectible cards, iExploreArt, Prototown, Driftbound, NOVA 7, the story of growth, and about the artist. Served automatically to browsers without WebGL2.
 - [Archives Wall](https://jfeelgood.com/archives.html): 186 paintings spanning 2004–2025 in a single scrolling wall.
+
+## Projects (worlds, galleries, games)
+
+- [iExploreArt](https://iexploreart.com): Virtual galleries for contemporary art. A first-person 3D art space built with Three.js: every visit begins in a reception foyer with Mira, the curator; each resident artist has a hall of their own, reached through the foyer door or a share link they can hand out. Built by JFeelgood; hosts residencies by other artists as well as the Hall of JFeelgood.
+- [Prototown](https://prototown.vercel.app): A browser 4X strategy game in the spirit of The Battle of Polytopia. Pick a tribe, capture villages to found cities, harvest resources, research the tech tree, and out-fight one to three AI tribes — or play asynchronously online against a friend from a secret link on phone or desktop, no sign-up. Win by Domination (last tribe standing) or Perfection (highest score in 30 turns). All art is drawn procedurally in code.
+- [Driftbound](https://driftbound.vercel.app): A 2D top-down survival adventure for web browsers. Tagline: "Six shards. One shore. No way back." You wash ashore on a cursed land of connected biomes, each held by a primordial beast guarding an artifact. Gather, craft, build, tame, fight. Six artifacts forge the Driftbound Key, but the curse lifts only when every boss is gone — and each can be killed or bargained with. No locked doors, no scored morality; the ending is a reckoning of what you did.
+- [NOVA 7](https://nova7game.org): A classic arcade-style game focused on one thing: the high score.
+- [The Book of Shadow Work](https://thebookofshadowwork.com): Companion site to the book — art, questions, and practices for inner excavation.
+- [minicuration](https://minicuration.com): Sister site that produces and fulfils the limited-edition art cards.
 
 ## Limited Edition Art Cards ($23 each)
 
-Museum-quality 2.5" × 3.5" art card reproductions of selected paintings, sealed in a magnetic acrylic display case with easel. Strictly numbered editions of 50 per design — no reprints. Sold via the sister site [minicuration.com](https://minicuration.com/):
+Museum-quality 2.5" × 3.5" art card reproductions of selected paintings, sealed in a magnetic acrylic display case with easel. Strictly numbered editions of 50 per design — no reprints. Sold via [minicuration.com](https://minicuration.com/):
 
 - [Dreamfall](https://minicuration.com/shop/dreamfall.html): $23. Edition of 50.
 - [Dream Mountain](https://minicuration.com/shop/dream-mountain.html): $23. Edition of 50.
@@ -31,11 +40,13 @@ Originals are one-of-one and never reproduced as originals. Selected available w
 - Path of Privilege: $2,000. 12×12 in, depth 4 in. Mixed media on wood — gold leaf, epoxy resin, affixed paintbrushes. Commentary on race, systemic inequality, and privilege.
 - The Mother Essence: $5,000. 36×36 in. Acrylic, latex, spray paint, acetone, found paper on hand-stretched canvas. Created 2011. From the private *Past & Future* series.
 
+The five featured works (Poetry of Solace, Adonis, Veritas, Path of Privilege, A Simple Meditation) hang on the Sunrise Terrace of the gallery.
+
 ## Series
 
 - Past & Future: Private fine art series. Large-scale mixed media works including The Mother Essence, Ancestors, Sisters, The Father Piece, and The Two Brothers.
 - Ascension: 2021 fine art series. Four acrylic-on-canvas works using intentional constraints — two colors per piece, bold minimal composition. First shown at Austin Studio Tour 2021 at Central Machine Works.
-- Self Work: 2021 fine art series. Eight of ten mixed media works exploring ego, identity, and sobriety. Acrylic on canvas with epoxy resin finish. Pieces nine and ten remain unfinished because self work is never done. Shown on the [home page](https://jfeelgood.com/#selfwork).
+- Self Work: 2021 fine art series. Eight of ten mixed media works exploring ego, identity, and sobriety (Vanity, The King, Pride, Lush, Businessman, Best Friend, Vicarious, Permission). Acrylic on canvas with epoxy resin finish. Pieces nine and ten remain unfinished because self work is never done. Hung in the gallery's Sunset Court; shown on the [classic site](https://jfeelgood.com/classic.html#selfwork).
 - Marbled Falls: A series of smaller original works (sold). Includes Doggo, Kitten, Golden Sands, Catching Feels, Dino, Unlocked, VHS.
 
 ## Books
@@ -45,7 +56,7 @@ Originals are one-of-one and never reproduced as originals. Selected available w
 
 ## About the Artist
 
-JFeelgood has over 18 years of experience across painting, mixed media, sculpture, writing, music, and game design. He has produced several hundred original paintings, five published books, five music albums, and a video game ([NOVA 7](https://nova7game.org)). He has organized community art events and served in leadership roles at art organizations.
+JFeelgood has over 18 years of experience across painting, mixed media, sculpture, writing, music, game design, and software. He has produced several hundred original paintings, five published books, five music albums, and video games, and builds virtual galleries and browser games ([iExploreArt](https://iexploreart.com), [Prototown](https://prototown.vercel.app), [Driftbound](https://driftbound.vercel.app), [NOVA 7](https://nova7game.org)). He has organized community art events and served in leadership roles at art organizations.
 
 In 2019 JFeelgood chose sobriety — from alcohol, cigarettes, self-medication, and the life he had been living — and channeled that transformation into the Self Work series. His practice is rooted in accountability, introspection, and the belief that powerful messages need very little to convey their strength.
 
