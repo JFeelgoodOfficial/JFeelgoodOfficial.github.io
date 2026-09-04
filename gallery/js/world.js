@@ -9,6 +9,7 @@ import { createSkyDome, setSkyState, bakeEnvironments, skyUniforms, currentSky }
 import { createSea, createPool } from './water.js';
 import { createMaterials } from './materials.js';
 import { buildBuilding } from './building.js';
+import { createLightPool } from './lights.js';
 import { createArt } from './art.js';
 import { createReflector } from './reflector.js';
 import { walker, spawn, lookDir } from './walker.js';
@@ -17,6 +18,7 @@ import { initHud, showPrompt, hidePrompt, showCard, showHint, updateCompass, ini
 import { FEATURED, SELF_WORK, ARCHIVES, BOOKS, CARDS, LINKS } from './content.js';
 
 let art = null, reflector = null, building = null, sun = null, hemi = null, ambient = null, envs = null;
+let pool = null, ambientFloor = 0.28, ambientIndoor = 0.08;
 let scene = null, renderer = null;
 const compassEntries = [];
 const _fwd = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0), _p = new THREE.Vector3();
@@ -45,7 +47,7 @@ export async function buildWorld(ctx) {
   await tick();
 
   progress(0.45, 'building the wings…');
-  building = buildBuilding(scene, mats, { quality });
+  building = buildBuilding(scene, mats);
   await tick();
 
   // sea + court pool
@@ -73,8 +75,13 @@ export async function buildWorld(ctx) {
   // updateWorld): otherwise this ambient plus the sky-driven ambient outdoors
   // is bright enough on its own to flatten the room, and the ceiling and
   // track lights never read as the thing doing the lighting.
-  ambient = new THREE.AmbientLight(0xa6acb4, 0.28);
+  ambient = new THREE.AmbientLight(0xa6acb4, ambientFloor);
   scene.add(ambient);
+
+  // The building's ceiling fixtures are data; this pool is the handful of real
+  // lights in the scene, aimed at whichever fixtures reach the visitor
+  // (lights.js explains why the count is capped).
+  pool = createLightPool(scene, building.fixtures, { size: C.LIGHT_POOL[quality] ?? 4 });
 
   // floor reflection (skipped on the low tier)
   reflector = createReflector(renderer, scene, { y: 0, scale: quality === 'high' ? 0.5 : 0.35 });
@@ -230,7 +237,10 @@ export function updateWorld(dt, t, camera) {
   // the hemisphere light isn't shadow-mapped — walls don't block it — so it
   // has to be damped by hand rather than relying on occlusion like the sun
   hemi.intensity = THREE.MathUtils.lerp(cur.hemiIntensity, 0.05, indoors);
-  ambient.intensity = THREE.MathUtils.lerp(0.28, 0.08, indoors);
+  ambient.intensity = THREE.MathUtils.lerp(ambientFloor, ambientIndoor, indoors);
+
+  // aim the light pool at the fixtures nearest the visitor
+  pool.update(walker.pos, dt);
 
   // environment map: pick the dominant preset (swaps happen deep inside the wings)
   const w = cur.w;
@@ -260,6 +270,25 @@ export function updateWorld(dt, t, camera) {
     hintShown = true;
     showHint('W A S D to walk · MOUSE to look · Shift run · E to view a painting');
   }
+}
+
+// Called when a lit program fails to compile on this device (main.js hooks
+// renderer.debug.onShaderError). Every light in the scene is another unrolled
+// GGX evaluation in that shader, so the only thing that can rescue a driver
+// that has already refused it is fewer lights: drop the pool a step, and once
+// it reaches zero light the rooms flatly from the ambient instead so the
+// gallery is dim rather than pitch black.
+export function degradeLighting() {
+  if (!pool) return -1;
+  const n = pool.degrade();
+  if (n === 0) { ambientFloor = 0.5; ambientIndoor = 0.62; if (hemi) hemi.intensity = 0.4; }
+  console.warn(`gallery: a lit shader failed to compile — light pool reduced to ${n}`);
+  showHint('This device could not run the full lighting — showing a simpler version.');
+  return n;
+}
+
+export function lightingReport() {
+  return { pool: pool ? pool.size : 0, fixtures: building ? building.fixtures.length : 0, ambient: ambientFloor };
 }
 
 export function renderReflection(camera) { if (reflector) reflector.update(camera); }

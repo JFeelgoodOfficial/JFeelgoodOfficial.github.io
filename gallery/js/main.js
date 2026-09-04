@@ -9,7 +9,7 @@ import { createPost } from './post.js';
 import { input, initInput, lockPointer, isActive } from './input.js';
 import { initTouch } from './touch.js';
 import { walker, stepWalker, updateCamera, spawn } from './walker.js';
-import { buildWorld, updateWorld, renderReflection, setReflectionEnabled, resizeReflection, handleInteract, resolvePlace } from './world.js';
+import { buildWorld, updateWorld, renderReflection, setReflectionEnabled, resizeReflection, handleInteract, resolvePlace, degradeLighting, lightingReport } from './world.js';
 
 if (document.documentElement.classList.contains('no-webgl')) {
   const el = document.getElementById('nogl');
@@ -23,6 +23,7 @@ const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug') ? (params.get('debug') || '1') : null;
 const TOUCH = params.has('touch') || (document.documentElement.classList.contains('touch') && !params.has('notouch'));
 const FORCE_Q = params.get('q'); // ?q=low|medium|high for testing
+const DIAG = params.has('diag'); // ?diag — on-screen GPU/shader report (no devtools on a phone)
 
 const canvas = document.createElement('canvas');
 canvas.className = 'gallery-canvas';
@@ -40,6 +41,23 @@ renderer.setClearColor(0x000000, 1);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.shadowMap.autoUpdate = false; // rendered once per frame by hand (the reflection pass shares them)
+
+// A lit program that fails to link takes every MeshStandardMaterial with it:
+// the building draws nothing and the gallery goes black around the paintings,
+// which are unlit and keep showing. Drivers differ in what they will accept, so
+// rather than trusting that the shader is small enough, catch the failure and
+// take lights out until it compiles.
+const shaderErrors = [];
+renderer.debug.onShaderError = (gl, program, vs, fs) => {
+  const log = (gl.getProgramInfoLog(program) || '').trim()
+    || (gl.getShaderInfoLog(fs) || '').trim()
+    || (gl.getShaderInfoLog(vs) || '').trim()
+    || 'no driver log';
+  shaderErrors.push(log);
+  console.error('gallery: shader error —', log);
+  if (shaderErrors.length <= 4) degradeLighting();
+  if (DIAG) updateDiag();
+};
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(C.FOV, innerWidth / innerHeight, TOUCH ? 0.2 : 0.08, 6000);
@@ -144,7 +162,9 @@ function startRenderLoop() {
 function frame() {
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
+  if (dt > 0) fps = fps * 0.9 + (1 / dt) * 0.1;
   if (!DEBUG && !FORCE_Q) monitorFps(dt);
+  if (DIAG && t - diagT > 0.5) { diagT = t; updateDiag(); }
 
   if (isActive() || DEBUG) stepWalker(dt);
   updateCamera(camera);
@@ -154,6 +174,34 @@ function frame() {
   if (renderer.shadowMap.enabled) renderer.shadowMap.needsUpdate = true;
   try { renderReflection(camera); } catch (e) { console.error(e); }
   post.render(scene, camera);
+}
+
+// --- on-screen diagnostics (?diag) -------------------------------------------
+// A phone has no console, so everything needed to tell "the lights are dim"
+// from "the lit shader never compiled" goes on the screen.
+let diagEl = null, diagT = 0;
+function updateDiag() {
+  if (!DIAG) return;
+  if (!diagEl) {
+    diagEl = document.createElement('pre');
+    diagEl.className = 'diag';
+    diagEl.setAttribute('style', 'position:fixed;left:8px;top:8px;z-index:9999;margin:0;padding:8px 10px;max-width:min(92vw,520px);max-height:60vh;overflow:auto;background:rgba(0,0,0,.72);color:#e9e4d8;font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;border:1px solid rgba(233,228,216,.25);border-radius:6px;pointer-events:none');
+    document.body.appendChild(diagEl);
+  }
+  const gl = renderer.getContext();
+  const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+  const l = lightingReport();
+  const r = renderer.info.render;
+  diagEl.textContent = [
+    `gpu      ${dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : 'hidden'}`,
+    `vendor   ${dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : 'hidden'}`,
+    `tier     ${quality}  dpr ${renderer.getPixelRatio().toFixed(2)}  touch ${TOUCH}`,
+    `uniforms ${gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS)} frag / ${gl.getParameter(gl.MAX_VERTEX_UNIFORM_VECTORS)} vert`,
+    `lights   pool ${l.pool} of ${l.fixtures} fixtures  ambient ${l.ambient}`,
+    `draw     ${r.calls} calls  ${r.triangles} tris  ${fps.toFixed(0)} fps`,
+    `programs ${renderer.info.programs ? renderer.info.programs.length : 0}`,
+    shaderErrors.length ? `\nSHADER ERRORS (${shaderErrors.length}):\n${shaderErrors.slice(0, 2).join('\n\n').slice(0, 900)}` : '\nno shader errors',
+  ].join('\n');
 }
 
 function onResize() {
@@ -190,6 +238,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // One-shot automatic downgrade if the first seconds run slow.
+let fps = 60;
 let fpsFrames = 0, fpsAccum = 0;
 function monitorFps(dt) {
   if (quality === 'low') return;
@@ -216,6 +265,9 @@ window.__debug = {
   },
   interact: () => handleInteract(),
   frame: () => frame(),
+  lighting: () => lightingReport(),
+  shaderErrors: () => shaderErrors.slice(),
+  degrade: () => degradeLighting(), // exercise the fallback ladder by hand
 };
 
 export { scene, camera, renderer, canvas };

@@ -13,6 +13,7 @@ python3 -m http.server 8123          # then open http://localhost:8123/
 Headless checks (Playwright + the pre-installed Chromium at `/opt/pw-browsers/…/chrome`, launched with `--use-angle=swiftshader --enable-unsafe-swiftshader --ignore-gpu-blocklist` so WebGL2 works):
 
 - Gallery: load `index.html?debug=at:court` (or `terrace|west|east|deck`), wait for `window.__debug.ready`, call `window.__debug.frame()` a few times (rAF is throttled headless), screenshot, and read `window.__hung` — `archive` must equal `ARCHIVES.length` (186). Also try `?q=low` and `?touch&debug`.
+- Gallery, brightness: at every place and every tier, the mean luminance of the top 72% of the frame (below that is the touch HUD) must clear ~40 on the lit places (terrace, west, east, court; the star deck sits under a space sky at ~25), and `window.__debug.shaderErrors()` must be empty. A lit program that fails to link takes every `MeshStandardMaterial` with it and the building renders as nothing at all, which no other check notices: the paintings are unlit, so `__hung` still reports 186 hung works over a black screen.
 - Classic: full-page screenshots at 1440 and 390 wide; every nav `#anchor` must exist; every `<script type="application/ld+json">` must `JSON.parse`.
 
 Do not commit screenshots or scratch scripts into the repo.
@@ -26,10 +27,12 @@ Do not commit screenshots or scratch scripts into the repo.
 - **Colour fidelity of paintings is non-negotiable.** The renderer uses `NeutralToneMapping`; `art.js` applies the exact inverse curve in the painting shader and writes alpha 0 so the bloom bright pass (which multiplies by alpha) ignores them. Don't tone-map, light, or bloom the canvases, and don't switch the tone-mapping operator without updating `INV_NEUTRAL`.
 - **Render targets are linear.** In r165 tone mapping and the sRGB transfer are applied only when drawing to the canvas; every RT (bloom, reflection) holds scene-linear half-float. `post.js` does tone mapping + sRGB in its composite.
 - **Reflection pass.** `reflector.js` renders the scene a second time from a mirrored camera; floors are excluded from that pass and `renderer.shadowMap.autoUpdate` is off so shadows are rendered once per frame and shared. Disabled on the `low` tier.
+- **Lights are a shader budget, not a scene graph.** three.js unrolls `#pragma unroll_loop_start` on the JS side, so every light in the scene pastes another full GGX evaluation into every lit fragment shader; past roughly a dozen, mobile drivers stop linking the program and the whole building draws nothing. So `building.js` emits fixtures as *data* (`fixture(x, y, z, intensity, color, range)`) and `lights.js` keeps a fixed pool of real `PointLight`s aimed at the ones nearest the visitor. Add a light by adding a fixture; never add a `THREE.PointLight` to the scene. `C.LIGHT_POOL` is the cap per tier and `C.WING_LIGHT_*` the corridor spacing — the pool must be big enough to hold every fixture whose falloff still matters where the visitor can stand, or lights visibly swap in and out. Changing the pool size recompiles every lit program, so it only ever changes on the failure ladder in `degradeLighting()`.
 - **Collision.** Walls register boxes through `walker.addBox`; walkable zones through `walker.addArea` and must overlap by ~1.2 m across every doorway or the player can't cross.
 - **Textures stream.** Every painting registers with `textures.js` (load/keep distances per kind). Don't preload the archive.
 - **Touch.** `touch.js` writes into the same `input` singleton as the keyboard; `hud.js` rewrites key glyphs in prompts for touch. Nothing else should know touch exists.
 - Keep the three quality tiers (`applyQuality` in `main.js`) working: `low` must load on a phone with no bloom, shadows or reflection.
+- **`?diag`** puts the GPU string, the tier, the uniform limits, the light pool and any driver shader log on screen. It is the only way to tell "dim" from "the lit shader never compiled" on a phone, where there is no console.
 
 ### Adding a painting
 
