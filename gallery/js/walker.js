@@ -50,7 +50,11 @@ export function stepWalker(dt) {
 
   const canMove = !walker.frozen;
   _fwd.set(Math.sin(walker.heading), 0, Math.cos(walker.heading));
-  _right.set(Math.cos(walker.heading), 0, -Math.sin(walker.heading));
+  // right = fwd × up: was (cos h, 0, -sin h), which is actually the LEFT
+  // vector for this heading convention (checked against how heading responds
+  // to mouseX above) — that's why strafe-right/the stick's right side moved
+  // the walker to their left. Negated to the true right-hand side.
+  _right.set(-Math.cos(walker.heading), 0, Math.sin(walker.heading));
   let f = 0, s = 0;
   if (canMove) {
     if (input.analog) { f = input.moveY; s = input.moveX; }
