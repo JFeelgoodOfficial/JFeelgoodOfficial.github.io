@@ -3,7 +3,12 @@
 // stone plinth above the sea. Everything is boxes, cylinders and planes with
 // the procedural materials from materials.js. Also emits the collision boxes
 // (walker.js), the hanging slots for art.js, the compass points, and the
-// indoor lights. Metres; +x runs west→east; the wings are centred on z = 0.
+// light fixtures. Metres; +x runs west→east; the wings are centred on z = 0.
+//
+// Fixtures are emitted as plain data, not as scene lights: a small pool of
+// real PointLights follows the visitor and is aimed at the nearest of them
+// (lights.js), because every light actually in the scene costs another
+// unrolled GGX evaluation in every lit fragment shader.
 
 import * as THREE from 'three';
 import { C, PLAN, TERRACE_HALF_Z, COURT_SOUTH_Z, DECK_HALF_Z } from './config.js';
@@ -23,14 +28,13 @@ function uvWorld(geo, tile, axisU = 'x', axisV = 'z') {
   uv.needsUpdate = true;
 }
 
-export function buildBuilding(scene, mats, opts = {}) {
-  const quality = opts.quality || 'high';
+export function buildBuilding(scene, mats) {
   const root = new THREE.Group();
   root.name = 'building';
   scene.add(root);
 
   const slots = { archive: [], featured: [], selfwork: [] };
-  const lights = [];
+  const fixtures = []; // ceiling/deck light fixtures as data (see lights.js)
   const glow = []; // meshes whose emissive follows the sky (clerestory strips)
   const floors = []; // reflective floors (excluded from the reflection pass)
 
@@ -125,12 +129,10 @@ export function buildBuilding(scene, mats, opts = {}) {
     }
     addBox(x - w / 2, x + w / 2, z - d / 2, z + d / 2);
   }
-  function pointLight(x, y, z, intensity, color = 0xfff1dc, dist = 26) {
-    const l = new THREE.PointLight(color, intensity, dist, 2);
-    l.position.set(x, y, z);
-    root.add(l);
-    lights.push(l);
-    return l;
+  function fixture(x, y, z, intensity, color = 0xfff1dc, range = 26) {
+    const f = { x, y, z, intensity, color, range };
+    fixtures.push(f);
+    return f;
   }
   function lightStrip(x0, x1, z, y, w = 0.22, mat = mats.lightStrip) {
     const s = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.06, w), mat);
@@ -185,13 +187,12 @@ export function buildBuilding(scene, mats, opts = {}) {
       band.rotation.x = Math.PI / 2; band.scale.set(1, 1, 8); // a 0.4 m glowing band along the wall top
       glow.push(band);
     }
-    // point lights down the two corridors
-    // The wings are sealed, so the sky environment is turned right down on the
-    // indoor materials (materials.js) and these carry the room instead.
-    const step = quality === 'low' ? 21 : 14;
-    for (let x = x0 + 7; x < x1 - 3; x += step) {
-      pointLight(x, H - 1.2, 3.6, quality === 'low' ? 95 : 66);
-      pointLight(x, H - 1.2, -3.6, quality === 'low' ? 95 : 66);
+    // Ceiling fixtures in pairs down the corridor. The wings are sealed — the
+    // sky environment is turned right down on the indoor materials
+    // (materials.js) and these carry the room instead.
+    for (let x = x0 + 6; x < x1 - 3; x += C.WING_LIGHT_STEP) {
+      fixture(x, H - 1.2, 3.6, C.WING_LIGHT_I, 0xfff1dc, C.WING_LIGHT_RANGE);
+      fixture(x, H - 1.2, -3.6, C.WING_LIGHT_I, 0xfff1dc, C.WING_LIGHT_RANGE);
     }
     // benches
     for (let x = x0 + 22; x < x1 - 12; x += 26) { bench(x, 3.6); bench(x + 13, -3.6); }
@@ -265,7 +266,8 @@ export function buildBuilding(scene, mats, opts = {}) {
     // overlaps it by 1.2 m so the doorway threshold is inside both
     addArea(x0, x1 - T / 2, -TERRACE_HALF_Z, TERRACE_HALF_Z);
     // low deck lights so the terrace still reads before the sun clears the water
-    if (quality !== 'low') { pointLight(x0 + 20, 3.5, -10, 18, 0xffd9b0, 22); pointLight(x0 + 20, 3.5, 10, 18, 0xffd9b0, 22); }
+    fixture(x0 + 20, 3.5, -10, 18, 0xffd9b0, 22);
+    fixture(x0 + 20, 3.5, 10, 18, 0xffd9b0, 22);
   }
 
   // --- sunset court (middle) ---------------------------------------------------
@@ -309,7 +311,7 @@ export function buildBuilding(scene, mats, opts = {}) {
     addArea(x0, x1, COURT_SOUTH_Z, HW);
     addArea(x0 - 1.2, x0 + 1.2, -5.4, -0.6);
     addArea(x1 - 1.2, x1 + 1.2, 0.6, 5.4);
-    pointLight((x0 + x1) / 2, H - 0.4, HW - 1.5, 26, 0xffd0a0, 30);
+    fixture((x0 + x1) / 2, H - 0.4, HW - 1.5, 26, 0xffd0a0, 30);
   }
 
   // --- star deck (east) ------------------------------------------------------
@@ -335,7 +337,7 @@ export function buildBuilding(scene, mats, opts = {}) {
       top.position.set(x, 1.35, z); root.add(top);
       const strip = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.03, 0.8), mats.lightStrip);
       strip.position.set(x, 0.92, z); root.add(strip);
-      pointLight(x, 1.6, z, 6, 0xfff0dc, 8);
+      fixture(x, 1.6, z, 6, 0xfff0dc, 8);
       // something to actually look at under the glass
       if (label === 'books') {
         for (let i = 0; i < 2; i++) {
@@ -366,11 +368,11 @@ export function buildBuilding(scene, mats, opts = {}) {
       const cap = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.12), mats.lightStripCool);
       cap.position.set(x, 0.52, s * (DECK_HALF_Z - 0.7)); root.add(cap);
     }
-    pointLight(x0 + 10, 3.5, 0, 22, 0xd8e2ff, 30);
-    pointLight(x0 + 28, 3.5, 0, 22, 0xd8e2ff, 30);
+    fixture(x0 + 10, 3.5, 0, 22, 0xd8e2ff, 30);
+    fixture(x0 + 28, 3.5, 0, 22, 0xd8e2ff, 30);
     sign('STAR DECK', x0 + T + 0.05, DOOR_H + 0.8, -3, Math.PI / 2, 0.55, { px: 110, tracking: 10, color: '#e9e4d8' });
     addArea(x0 + T / 2, x1, -DECK_HALF_Z, DECK_HALF_Z);
   }
 
-  return { root, slots, lights, glow, floors, cases };
+  return { root, slots, fixtures, glow, floors, cases };
 }

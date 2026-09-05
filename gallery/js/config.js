@@ -36,6 +36,26 @@ export const C = {
   ART_MAX_SELFWORK: 2.4,
   SLOT_STEP: 3.0,       // wall spacing between paintings (186 works have to fit)
   SEA_Y: -7,            // sea surface (the gallery stands on a headland plinth)
+
+  // --- lighting ---
+  // Ceiling fixtures are data, not scene lights: a pool of this many real
+  // PointLights follows the visitor and is aimed at the nearest ones
+  // (lights.js). The number is a shader budget, not a look — three.js unrolls
+  // one full GGX evaluation per light into every lit fragment shader, and the
+  // 22 lights this replaced compiled a shader mobile drivers refused to link,
+  // which drew the whole building as nothing at all.
+  LIGHT_POOL: { low: 6, medium: 8, high: 8 },
+  // Wing fixtures hang in pairs (z = ±3.6) every STEP metres, reaching RANGE.
+  // The two together set what the pool has to hold: at STEP 12 / RANGE 26 the
+  // visitor is inside the reach of five rows, but the outer two land where the
+  // falloff window has closed to under a thousandth of the light in the room,
+  // so a pool of six carries the corridor and the pair it drops cannot be seen
+  // going. Shorten RANGE much below STEP * 2 and the ceiling ahead goes dark:
+  // the long reach is what makes a wing read as a lit room rather than a row of
+  // spotlights.
+  WING_LIGHT_STEP: 12,
+  WING_LIGHT_RANGE: 26,
+  WING_LIGHT_I: 95,
 };
 
 // --- plan (x ranges) ---
