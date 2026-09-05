@@ -44,17 +44,16 @@ export const C = {
   // one full GGX evaluation per light into every lit fragment shader, and the
   // 22 lights this replaced compiled a shader mobile drivers refused to link,
   // which drew the whole building as nothing at all.
-  LIGHT_POOL: { low: 6, medium: 8, high: 8 },
+  LIGHT_POOL: { low: 4, medium: 8, high: 8 },
+  // The low tier holds four rather than six: four fewer unrolled GGX
+  // evaluations is exactly the headroom the phones that drew a black room were
+  // short of, and the ambient and hemisphere fills indoors are now a real
+  // light rather than a whisper, so the far end of a wing no longer depends on
+  // the two faintest fixtures the pool would otherwise carry.
+  //
   // Wing fixtures hang in pairs (z = ±3.6) every STEP metres, reaching RANGE.
-  // The two together set what the pool has to hold. At STEP 12 / RANGE 26 the
-  // visitor stands inside the reach of five rows and six slots hold the nearest
-  // three, which is what a corridor needs: the pool ranks fixtures by their
-  // contribution where the visitor stands, but the camera is looking 10 to 25 m
-  // down the wing, and those far surfaces are lit by exactly the fixtures a
-  // smaller pool drops — cutting it to four measurably dims the room ahead.
-  // Shorten RANGE much below STEP * 2 and the ceiling ahead goes dark too: the
-  // long reach is what makes a wing read as a lit room rather than a row of
-  // spots.
+  // Shorten RANGE much below STEP * 2 and the ceiling ahead goes dark: the long
+  // reach is what makes a wing read as a lit room rather than a row of spots.
   WING_LIGHT_STEP: 12,
   WING_LIGHT_RANGE: 26,
   WING_LIGHT_I: 95,
@@ -150,9 +149,9 @@ export const SKY = {
     cloud: 0,
     cloudLit: new THREE.Color(0x000000),
     cloudShade: new THREE.Color(0x000000),
-    hemiSky: new THREE.Color(0x4a5a80),
-    hemiGround: new THREE.Color(0x15181f),
-    hemiIntensity: 0.3,
+    hemiSky: new THREE.Color(0x5a6a94),
+    hemiGround: new THREE.Color(0x2a3040),
+    hemiIntensity: 0.55,
     seaDeep: new THREE.Color(0x03040a),
     seaShallow: new THREE.Color(0x0c1226),
     envIntensity: 0.5,
