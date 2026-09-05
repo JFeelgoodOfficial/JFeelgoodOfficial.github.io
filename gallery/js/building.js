@@ -266,8 +266,8 @@ export function buildBuilding(scene, mats) {
     // overlaps it by 1.2 m so the doorway threshold is inside both
     addArea(x0, x1 - T / 2, -TERRACE_HALF_Z, TERRACE_HALF_Z);
     // low deck lights so the terrace still reads before the sun clears the water
-    fixture(x0 + 20, 3.5, -10, 18, 0xffd9b0, 22);
-    fixture(x0 + 20, 3.5, 10, 18, 0xffd9b0, 22);
+    fixture(x0 + 20, 3.5, -10, 26, 0xffd9b0, 26);
+    fixture(x0 + 20, 3.5, 10, 26, 0xffd9b0, 26);
   }
 
   // --- sunset court (middle) ---------------------------------------------------
@@ -311,7 +311,11 @@ export function buildBuilding(scene, mats) {
     addArea(x0, x1, COURT_SOUTH_Z, HW);
     addArea(x0 - 1.2, x0 + 1.2, -5.4, -0.6);
     addArea(x1 - 1.2, x1 + 1.2, 0.6, 5.4);
-    fixture((x0 + x1) / 2, H - 0.4, HW - 1.5, 26, 0xffd0a0, 30);
+    // the court is roofless but the Self Work wall sits under a deep canopy:
+    // three fixtures along it, not one, so the whole north side reads at night
+    fixture((x0 + x1) / 2, H - 0.4, HW - 1.5, 50, 0xffd0a0, 34);
+    fixture(x0 + 10, H - 0.4, HW - 1.5, 50, 0xffd0a0, 34);
+    fixture(x1 - 10, H - 0.4, HW - 1.5, 50, 0xffd0a0, 34);
   }
 
   // --- star deck (east) ------------------------------------------------------
@@ -368,8 +372,10 @@ export function buildBuilding(scene, mats) {
       const cap = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.12), mats.lightStripCool);
       cap.position.set(x, 0.52, s * (DECK_HALF_Z - 0.7)); root.add(cap);
     }
-    fixture(x0 + 10, 3.5, 0, 22, 0xd8e2ff, 30);
-    fixture(x0 + 28, 3.5, 0, 22, 0xd8e2ff, 30);
+    // the deck stands under a space sky with no sun in it, so the deck lights
+    // are the only thing that makes the paving and the cases read
+    fixture(x0 + 10, 3.5, 0, 40, 0xd8e2ff, 34);
+    fixture(x0 + 28, 3.5, 0, 40, 0xd8e2ff, 34);
     sign('STAR DECK', x0 + T + 0.05, DOOR_H + 0.8, -3, Math.PI / 2, 0.55, { px: 110, tracking: 10, color: '#e9e4d8' });
     addArea(x0 + T / 2, x1, -DECK_HALF_Z, DECK_HALF_Z);
   }

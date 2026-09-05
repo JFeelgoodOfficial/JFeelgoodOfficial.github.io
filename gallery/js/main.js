@@ -9,7 +9,7 @@ import { createPost } from './post.js';
 import { input, initInput, lockPointer, isActive } from './input.js';
 import { initTouch } from './touch.js';
 import { walker, stepWalker, updateCamera, spawn } from './walker.js';
-import { buildWorld, updateWorld, renderReflection, setReflectionEnabled, resizeReflection, handleInteract, resolvePlace, degradeLighting, lightingReport } from './world.js';
+import { buildWorld, updateWorld, renderReflection, setReflectionEnabled, resizeReflection, handleInteract, resolvePlace, degradeLighting, lightingReport, probeLighting, startWelcome, setProbeFail } from './world.js';
 
 if (document.documentElement.classList.contains('no-webgl')) {
   const el = document.getElementById('nogl');
@@ -24,6 +24,13 @@ const DEBUG = params.has('debug') ? (params.get('debug') || '1') : null;
 const TOUCH = params.has('touch') || (document.documentElement.classList.contains('touch') && !params.has('notouch'));
 const FORCE_Q = params.get('q'); // ?q=low|medium|high for testing
 const DIAG = params.has('diag'); // ?diag — on-screen GPU/shader report (no devtools on a phone)
+// ?lit=noenv|nopoint|lambert|basic forces a rung of the lighting fallback
+// ladder (world.js) on any device, which is how you find out from a phone
+// which rung it needs without waiting for the self-test to decide.
+const FORCE_LIT = params.get('lit');
+// ?probefail — pretend every lighting self-test reading came back black, to
+// exercise the whole fallback ladder on a device that does not need it
+const PROBE_FAIL = params.has('probefail');
 
 const canvas = document.createElement('canvas');
 canvas.className = 'gallery-canvas';
@@ -112,7 +119,8 @@ function startLoad() {
   if (loadStarted) return;
   loadStarted = true;
   if (loaderEl) { loaderEl.classList.remove('stage-choice'); loaderEl.classList.add('stage-loading'); }
-  buildWorld({ scene, renderer, camera, quality, progress: setProgress, relock: () => lockPointer(canvas) })
+  if (PROBE_FAIL) setProbeFail(true);
+  buildWorld({ scene, renderer, camera, quality, progress: setProgress, forceRung: FORCE_LIT, relock: () => lockPointer(canvas) })
     .then(() => {
       if (statusEl) statusEl.textContent = '';
       // the world is built; now switch the renderer itself to the tier
@@ -130,6 +138,9 @@ function enterWorld() {
   if (DEBUG && DEBUG.startsWith('at:')) jumpTo(DEBUG.slice(3));
   if (loaderEl) { loaderEl.classList.add('fading'); setTimeout(() => (loaderEl.style.display = 'none'), 900); }
   if (hudEl) hudEl.hidden = false;
+  // the floating WELCOME is placed from where the visitor actually stands, so
+  // it can only be built once the jump above has happened
+  startWelcome();
   if (!DEBUG) lockPointer(canvas);
 }
 
@@ -197,7 +208,8 @@ function updateDiag() {
     `vendor   ${dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : 'hidden'}`,
     `tier     ${quality}  dpr ${renderer.getPixelRatio().toFixed(2)}  touch ${TOUCH}`,
     `uniforms ${gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS)} frag / ${gl.getParameter(gl.MAX_VERTEX_UNIFORM_VECTORS)} vert`,
-    `lights   pool ${l.pool} of ${l.fixtures} fixtures  ambient ${l.ambient}${l.flattened ? '  MATERIALS FLATTENED' : ''}`,
+    `lights   rung ${l.rung}  pool ${l.pool} of ${l.fixtures} fixtures  ambient ${l.ambient}  env ${l.env ? 'on' : 'off'}${l.flattened ? '  FLATTENED' : ''}`,
+    `probe    ${l.probes.map((p) => `${p.rung}:${p.lum}`).join('  ') || 'none'}`,
     `draw     ${r.calls} calls  ${r.triangles} tris  ${fps.toFixed(0)} fps`,
     `programs ${renderer.info.programs ? renderer.info.programs.length : 0}`,
     shaderErrors.length ? `\nSHADER ERRORS (${shaderErrors.length}):\n${shaderErrors.slice(0, 2).join('\n\n').slice(0, 900)}` : '\nno shader errors',
@@ -266,6 +278,8 @@ window.__debug = {
   interact: () => handleInteract(),
   frame: () => frame(),
   lighting: () => lightingReport(),
+  probe: () => probeLighting(),
+  welcome: () => startWelcome(),
   shaderErrors: () => shaderErrors.slice(),
   degrade: () => degradeLighting(), // exercise the fallback ladder by hand
 };
