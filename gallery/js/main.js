@@ -55,7 +55,7 @@ renderer.debug.onShaderError = (gl, program, vs, fs) => {
     || 'no driver log';
   shaderErrors.push(log);
   console.error('gallery: shader error —', log);
-  if (shaderErrors.length <= 4) degradeLighting();
+  if (shaderErrors.length <= 8) degradeLighting(); // enough calls to walk the whole ladder
   if (DIAG) updateDiag();
 };
 
@@ -197,7 +197,7 @@ function updateDiag() {
     `vendor   ${dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : 'hidden'}`,
     `tier     ${quality}  dpr ${renderer.getPixelRatio().toFixed(2)}  touch ${TOUCH}`,
     `uniforms ${gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS)} frag / ${gl.getParameter(gl.MAX_VERTEX_UNIFORM_VECTORS)} vert`,
-    `lights   pool ${l.pool} of ${l.fixtures} fixtures  ambient ${l.ambient}`,
+    `lights   pool ${l.pool} of ${l.fixtures} fixtures  ambient ${l.ambient}${l.flattened ? '  MATERIALS FLATTENED' : ''}`,
     `draw     ${r.calls} calls  ${r.triangles} tris  ${fps.toFixed(0)} fps`,
     `programs ${renderer.info.programs ? renderer.info.programs.length : 0}`,
     shaderErrors.length ? `\nSHADER ERRORS (${shaderErrors.length}):\n${shaderErrors.slice(0, 2).join('\n\n').slice(0, 900)}` : '\nno shader errors',

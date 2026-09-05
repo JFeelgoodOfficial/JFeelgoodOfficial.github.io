@@ -18,7 +18,7 @@ import { initHud, showPrompt, hidePrompt, showCard, showHint, updateCompass, ini
 import { FEATURED, SELF_WORK, ARCHIVES, BOOKS, CARDS, LINKS } from './content.js';
 
 let art = null, reflector = null, building = null, sun = null, hemi = null, ambient = null, envs = null;
-let pool = null, ambientFloor = 0.28, ambientIndoor = 0.08;
+let pool = null, ambientFloor = 0.28, ambientIndoor = 0.08, flattened = false;
 let scene = null, renderer = null;
 const compassEntries = [];
 const _fwd = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0), _p = new THREE.Vector3();
@@ -273,22 +273,64 @@ export function updateWorld(dt, t, camera) {
 }
 
 // Called when a lit program fails to compile on this device (main.js hooks
-// renderer.debug.onShaderError). Every light in the scene is another unrolled
-// GGX evaluation in that shader, so the only thing that can rescue a driver
-// that has already refused it is fewer lights: drop the pool a step, and once
-// it reaches zero light the rooms flatly from the ambient instead so the
-// gallery is dim rather than pitch black.
+// renderer.debug.onShaderError). A failed program draws nothing at all, so the
+// building disappears and only the unlit paintings are left on a black screen —
+// which is exactly what phones were showing. Two rungs down from there:
+//
+// 1. Fewer lights. Each one is another unrolled GGX evaluation in the shader,
+//    so the pool drops 8/4 → 3 → 1 → 0, and at zero the ambient comes up to
+//    light the rooms flatly instead.
+// 2. Simpler materials. If a lit program still won't compile with no point
+//    lights left, the problem was never the light count, and the PBR shader
+//    itself is out of reach on this device — so swap it for Lambert, which is a
+//    fraction of the size. Flat and matte, but a gallery you can see.
 export function degradeLighting() {
   if (!pool) return -1;
-  const n = pool.degrade();
-  if (n === 0) { ambientFloor = 0.5; ambientIndoor = 0.62; if (hemi) hemi.intensity = 0.4; }
-  console.warn(`gallery: a lit shader failed to compile — light pool reduced to ${n}`);
-  showHint('This device could not run the full lighting — showing a simpler version.');
-  return n;
+  if (pool.size > 0) {
+    const n = pool.degrade();
+    if (n === 0) { ambientFloor = 0.5; ambientIndoor = 0.62; if (hemi) hemi.intensity = 0.4; }
+    console.warn(`gallery: a lit shader failed to compile — light pool reduced to ${n}`);
+    showHint('This device could not run the full lighting — showing a simpler version.');
+    return n;
+  }
+  if (!flattened) {
+    flattenMaterials();
+    console.warn('gallery: lit shaders still failing with no point lights — falling back to simple materials');
+  }
+  return 0;
+}
+
+// Last resort: every PBR material in the scene becomes a Lambert one carrying
+// the same colour, texture and emissive. Substitutions are cached per source
+// material, so the whole building still shares a handful of programs. The
+// floor's planar reflection is injected into the material it replaces and does
+// not survive, which is the right trade when the alternative is a black room.
+function flattenMaterials() {
+  flattened = true;
+  const swap = new Map();
+  scene.traverse((o) => {
+    const m = o.material;
+    if (!o.isMesh || !m || !(m.isMeshStandardMaterial || m.isMeshPhysicalMaterial)) return;
+    let repl = swap.get(m);
+    if (!repl) {
+      repl = new THREE.MeshLambertMaterial({
+        color: m.color, map: m.map, emissive: m.emissive, emissiveIntensity: m.emissiveIntensity,
+        transparent: m.transparent, opacity: m.opacity, side: m.side, depthWrite: m.depthWrite,
+        alphaTest: m.alphaTest, envMapIntensity: m.envMapIntensity,
+      });
+      swap.set(m, repl);
+    }
+    o.material = repl;
+  });
 }
 
 export function lightingReport() {
-  return { pool: pool ? pool.size : 0, fixtures: building ? building.fixtures.length : 0, ambient: ambientFloor };
+  return {
+    pool: pool ? pool.size : 0,
+    fixtures: building ? building.fixtures.length : 0,
+    ambient: ambientFloor,
+    flattened,
+  };
 }
 
 export function renderReflection(camera) { if (reflector) reflector.update(camera); }

@@ -46,13 +46,15 @@ export const C = {
   // which drew the whole building as nothing at all.
   LIGHT_POOL: { low: 6, medium: 8, high: 8 },
   // Wing fixtures hang in pairs (z = ±3.6) every STEP metres, reaching RANGE.
-  // The two together set what the pool has to hold: at STEP 12 / RANGE 26 the
-  // visitor is inside the reach of five rows, but the outer two land where the
-  // falloff window has closed to under a thousandth of the light in the room,
-  // so a pool of six carries the corridor and the pair it drops cannot be seen
-  // going. Shorten RANGE much below STEP * 2 and the ceiling ahead goes dark:
-  // the long reach is what makes a wing read as a lit room rather than a row of
-  // spotlights.
+  // The two together set what the pool has to hold. At STEP 12 / RANGE 26 the
+  // visitor stands inside the reach of five rows and six slots hold the nearest
+  // three, which is what a corridor needs: the pool ranks fixtures by their
+  // contribution where the visitor stands, but the camera is looking 10 to 25 m
+  // down the wing, and those far surfaces are lit by exactly the fixtures a
+  // smaller pool drops — cutting it to four measurably dims the room ahead.
+  // Shorten RANGE much below STEP * 2 and the ceiling ahead goes dark too: the
+  // long reach is what makes a wing read as a lit room rather than a row of
+  // spots.
   WING_LIGHT_STEP: 12,
   WING_LIGHT_RANGE: 26,
   WING_LIGHT_I: 95,
