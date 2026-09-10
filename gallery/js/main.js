@@ -1,7 +1,10 @@
-// Boot + frame loop for the jfeelgood gallery. Owns the renderer, the title
-// screen → loading → ENTER sequence, pointer lock, quality tiers and the
-// per-frame order: walk → camera → world update → floor reflection pass →
-// scene render (through the HDR bloom pipeline).
+// The gallery itself: renderer, loading sequence, pointer lock, quality tiers
+// and the per-frame order (walk → camera → world update → floor reflection
+// pass → scene render through the HDR bloom pipeline).
+//
+// boot.js owns the title screen and imports this module only once the visitor
+// asks for the gallery, so everything below — three.js included — is off the
+// critical path of the front page. startLoad() is exported for it to call.
 
 import * as THREE from 'three';
 import { C } from './config.js';
@@ -106,7 +109,6 @@ const loaderEl = document.getElementById('loader');
 const fillEl = document.getElementById('loader-fill');
 const statusEl = document.getElementById('loader-status');
 const enterBtn = document.getElementById('enter-btn');
-const enterWorldBtn = document.getElementById('enter-world');
 const hudEl = document.getElementById('hud');
 
 function setProgress(f, label) {
@@ -115,7 +117,7 @@ function setProgress(f, label) {
 }
 
 let loadStarted = false;
-function startLoad() {
+export function startLoad() {
   if (loadStarted) return;
   loadStarted = true;
   if (loaderEl) { loaderEl.classList.remove('stage-choice'); loaderEl.classList.add('stage-loading'); }
@@ -149,7 +151,6 @@ function jumpTo(name) {
   if (p) spawn(p.x, p.z, p.heading, 0);
 }
 
-if (enterWorldBtn) enterWorldBtn.addEventListener('click', startLoad);
 if (enterBtn) enterBtn.addEventListener('click', enterWorld);
 canvas.addEventListener('click', () => {
   if (running && !input.locked && !document.querySelector('.card-overlay:not([hidden]),.viewer-overlay:not([hidden])')) lockPointer(canvas);
@@ -160,6 +161,8 @@ initInput(canvas,
   () => { if (hudEl) hudEl.classList.remove('locked'); }
 );
 if (TOUCH) initTouch(canvas, { onInteract: () => { try { handleInteract(); } catch (e) { console.error(e); } } });
+// ?debug and the headless checks import this module directly and expect the
+// world without a click; boot.js calls startLoad() for everyone else.
 if (DEBUG) startLoad();
 
 // --- render loop -------------------------------------------------------------

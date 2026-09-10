@@ -1,6 +1,6 @@
 # jfeelgood.com — working notes
 
-Static GitHub Pages site, no build step. Three pages: `index.html` (title screen → walkable 3D gallery), `classic.html` (one section per thing being made, with big "thought" copy between sections), `archives.html` (186-work wall). Read `README` first for the page/asset map; this file is the conventions and how-tos.
+Static site, no build step, served by Vercel (and as a GitHub Pages user site). Three pages: `index.html` (title screen → walkable 3D gallery), `classic.html` (one section per thing being made, with big "thought" copy between sections), `archives.html` (186-work wall). Read `README` first for the page/asset map; this file is the conventions and how-tos.
 
 ## Commands
 
@@ -10,14 +10,26 @@ There is nothing to install for the site itself. To run it locally:
 python3 -m http.server 8123          # then open http://localhost:8123/
 ```
 
+Use the server, not `file://`: both `index.html` and `archives.html` load ES modules, and a module import over `file://` is blocked.
+
 Headless checks (Playwright + the pre-installed Chromium at `/opt/pw-browsers/…/chrome`, launched with `--use-angle=swiftshader --enable-unsafe-swiftshader --ignore-gpu-blocklist` so WebGL2 works):
 
 - Gallery: load `index.html?debug=at:court` (or `terrace|west|east|deck`), wait for `window.__debug.ready`, call `window.__debug.frame()` a few times (rAF is throttled headless), screenshot, and read `window.__hung` — `archive` must equal `ARCHIVES.length` (186). Also try `?q=low` and `?touch&debug`.
-- Gallery, brightness: at every place and every tier, the mean luminance of the top 72% of the frame (below that is the touch HUD) must clear ~110 on the lit places (terrace, west, east, court) and ~25 on the star deck, which sits under a space sky that fills half the frame — measure the band from 45% to 72% down the frame there (geometry, not sky) and expect ~75. `window.__debug.shaderErrors()` must be empty and `lighting().rung` must read `full`. A lit program that fails to link takes every `MeshStandardMaterial` with it and the building renders as nothing at all, which no other check notices: the paintings are unlit, so `__hung` still reports 186 hung works over a black screen.
+- Gallery, brightness: at every place and every tier, the mean luminance of the top 72% of the frame (below that is the touch HUD) must clear ~110 on the lit places (terrace, west, east, court) and ~25 on the star deck, which sits under a space sky that fills half the frame. Luminance here is Rec. 709 (`0.2126R + 0.7152G + 0.0722B`) on a 1280×720 shot; a plain mean of R, G and B reads a few points higher, so say which one a number came from. Measured on `?debug=at:deck` as of 2026-09-10: 33 over the top 72%, 58 over the 45–72% band (the deck floor). An earlier note here put that band at ~75; it does not reproduce, and did not reproduce before the size and performance pass either — treat 58 as the reading to compare against and the ≥25 floor as the gate. `window.__debug.shaderErrors()` must be empty and `lighting().rung` must read `full`. A lit program that fails to link takes every `MeshStandardMaterial` with it and the building renders as nothing at all, which no other check notices: the paintings are unlit, so `__hung` still reports 186 hung works over a black screen.
 - Gallery, the fallback ladder: `?lit=noenv|nopoint|lambert|basic` forces a rung; every rung must still draw a lit room (terrace ≥ 100, west ≥ 60 on the same band). `?probefail` makes every self-test reading come back black, which must walk the ladder to `basic` and still leave the wing well lit.
+- Gallery, the front door: with no query string, loading `index.html` must **not** request `three.module.min.js` or anything under `gallery/js/` beyond `boot.js` — check the Playwright request log. The world is a dynamic import; if something drags three.js back onto the title screen, every visitor pays 230 KB for a page they may only be passing through.
 - Classic: full-page screenshots at 1440 and 390 wide; every nav `#anchor` must exist; every `<script type="application/ld+json">` must `JSON.parse`.
+- All three pages: no request may go to a third-party origin (fonts and analytics are gone; the only outbound links are Stripe and minicuration, both user-initiated), and no request may 404 — `archives.html` builds its grid from `content.js`, so a bad path there is 186 broken images.
 
 Do not commit screenshots or scratch scripts into the repo.
+
+## Weight
+
+The repository is what gets deployed, every push, so its size is a running cost as well as a download. Two rules keep it honest:
+
+- **No full-resolution originals in the repo.** They are the artist's archive of record and live off-site. Everything here is a derivative sized for the web: 1200px `opt/`, 700px `thumbs/`, 1400px `archives/full/`. The originals up to and including commit `34938e0` are still in git history if one is ever needed back.
+- **`vercel.json` caches `/assets/**` and `/gallery/vendor/**` as `immutable` for a year.** So a file's content may never change under its own name — regenerate an image or upgrade three.js under a *new* filename, or visitors keep the old one for a year. HTML, `gallery/js` and `gallery/css` are deliberately left on the default revalidate-every-load, because they reference each other by stable names and a stale module would mix versions.
+- `vercel.json` also turns off deployments for `claude/*` branches, so agent pushes do not each store a preview build. Delete that entry to get PR previews back.
 
 ## Gallery conventions (`gallery/js/`)
 
@@ -32,16 +44,18 @@ Do not commit screenshots or scratch scripts into the repo.
 - **Indoors is filled, not just spotted.** The wings are windowless, and the fixture pool alone left the far end of a corridor dark on the tier that has the fewest lights. `LIT` in `world.js` holds the ambient, hemisphere and environment floors indoors and out; the ladder raises them as it removes light sources. The fixtures still shape the room, but they are no longer the only thing lighting it.
 - **Lights are a shader budget, not a scene graph.** three.js unrolls `#pragma unroll_loop_start` on the JS side, so every light in the scene pastes another full GGX evaluation into every lit fragment shader; past roughly a dozen, mobile drivers stop linking the program and the whole building draws nothing. So `building.js` emits fixtures as *data* (`fixture(x, y, z, intensity, color, range)`) and `lights.js` keeps a fixed pool of real `PointLight`s aimed at the ones nearest the visitor. Add a light by adding a fixture; never add a `THREE.PointLight` to the scene. `C.LIGHT_POOL` is the cap per tier and `C.WING_LIGHT_*` the corridor spacing — the pool must be big enough to hold every fixture whose falloff still matters where the visitor can stand, or lights visibly swap in and out. Changing the pool size recompiles every lit program, so it only ever changes on the failure ladder in `degradeLighting()`.
 - **Collision.** Walls register boxes through `walker.addBox`; walkable zones through `walker.addArea` and must overlap by ~1.2 m across every doorway or the player can't cross.
-- **Textures stream.** Every painting registers with `textures.js` (load/keep distances per kind). Don't preload the archive.
+- **Textures stream.** Every painting registers with `textures.js` (load/keep distances per kind). Don't preload the archive. Requests are rationed: each scan starts the *nearest* panels first and never has more than `maxInFlight` in the air, because walking into a wing brings a dozen panels into range at once and the painting the visitor is standing in front of must not queue behind the far end of the corridor. The `low` tier also passes a `maxDim` so phones upload a smaller copy of each image.
+- **Every work carries its pixel size.** `content.js` ships `w`/`h` with each entry (`ARCHIVE_DIMS` for the wall, `IMG_DIMS` for everything else), so `art.js` gives a panel its true shape at hang time instead of hanging a square that snaps to its proportions when the file lands, and `archives.html` can write `width`/`height` on 186 images. Add a work, add its size.
+- **The front page does not load the gallery.** `boot.js` is the only module `index.html` loads and it imports nothing; `main.js` and three.js arrive through a dynamic `import()` when the visitor asks for the gallery (warmed on hover of the button). Anything added to the title screen belongs in `boot.js`; anything that needs three belongs behind that import.
 - **Touch.** `touch.js` writes into the same `input` singleton as the keyboard; `hud.js` rewrites key glyphs in prompts for touch. Nothing else should know touch exists.
 - Keep the three quality tiers (`applyQuality` in `main.js`) working: `low` must load on a phone with no bloom, shadows or reflection.
 - **`?diag`** puts the GPU string, the tier, the uniform limits, the light pool and any driver shader log on screen. It is the only way to tell "dim" from "the lit shader never compiled" on a phone, where there is no console.
 
 ### Adding a painting
 
-1. Put the optimized image in `assets/images/opt/` (featured / Self Work, 1200px WebP) or `assets/images/archives/thumbs/` + the original in `assets/images/archives/` (archive, 700px WebP thumb).
-2. Add it to `gallery/js/content.js` (`FEATURED`, `SELF_WORK`, or the `ARCHIVE_NAMED` list / count). The archive hangs in list order along the walls; if `window.__hung.archive` comes back short, lower `C.SLOT_STEP` (≥ 2.9) or lengthen the wings in `PLAN`.
-3. Mirror it on `classic.html` and `archives.html`, and in `llms.txt` if it's a featured or priced work.
+1. Put the optimized image in `assets/images/opt/` (featured / Self Work, 1200px WebP) or `assets/images/archives/thumbs/` (archive, 700px WebP thumb). If the archive original is meaningfully larger than 700px, also write a 1400px WebP into `assets/images/archives/full/` under the same base name — that is what the click-through opens. The original itself does not go in the repo.
+2. Add it to `gallery/js/content.js` (`FEATURED`, `SELF_WORK`, or the `ARCHIVE_NAMED` list / count) **and give it its pixel size**: an entry in `IMG_DIMS`, or a `WxH` entry in the same position in `ARCHIVE_DIMS` (suffix `*` if it has a `full/` file). The archive hangs in list order along the walls; if `window.__hung.archive` comes back short, lower `C.SLOT_STEP` (≥ 2.9) or lengthen the wings in `PLAN`.
+3. Mirror it on `classic.html` (with `width`/`height` on the `<img>`), and in `llms.txt` if it's a featured or priced work. `archives.html` needs nothing — it reads `ARCHIVES` from `content.js`.
 
 ### Adding a place or zone
 
@@ -59,7 +73,9 @@ Add its x-range to `PLAN`, a `PLACES` entry (used by `?debug=at:` and the compas
 - `llms.txt` describes the gallery, the projects, the paintings, series, books and cards. Update it whenever any of those change.
 - JSON-LD `@graph` in `index.html` and `classic.html`: Person (with `sameAs` for every project site), WebSite, the product `ItemList`, the project `VideoGame`/`WebSite` nodes, `Book` ×2, and the classic page's `CollectionPage` with `hasPart` anchors. Validate with `JSON.parse`.
 - Canonicals are per page (`/`, `/classic.html`, `/archives.html`). `sitemap.xml` `lastmod` gets today's date for any page you touch. `robots.txt` stays fully open, AI crawlers explicitly allowed.
-- Every `<img>` has a descriptive `alt`; below-the-fold images use `loading="lazy" decoding="async"`.
+- Every `<img>` has a descriptive `alt`, and `width`/`height` matching the file so nothing reflows as it loads; below-the-fold images use `loading="lazy" decoding="async"`. The classic hero is the LCP element: it keeps its `rel=preload` and `fetchpriority="high"` and is never lazy.
+- Fonts are self-hosted from `assets/fonts/` (one variable file per family, `font-display: swap`, preloaded). Don't reintroduce the Google Fonts stylesheet — it is a render-blocking round trip to another origin. Don't add a third-party script without a reason; the Vercel Insights tag was removed because Web Analytics is not enabled on the project.
+- `og:image` is the 1200×630 landscape card, with `og:image:width`/`height` declared. A portrait painting gets centre-cropped into an unreadable strip by every share surface.
 
 ## House rules
 

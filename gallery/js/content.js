@@ -147,16 +147,90 @@ function titleFromName(base) {
   return base.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Pixel size of each thumbnail, in the same order, as "WxH" — a trailing *
+// marks the works that also have a downscaled full-view file under
+// archives/full/ (only the originals that were bigger than their own thumb got
+// one; for everything else the thumb is the largest version there is). The
+// sizes let both the wall panels and archives.html reserve the right shape
+// before a single byte of image has arrived.
+const ARCHIVE_DIMS = `
+  700x955* 700x955* 700x955* 510x276 700x955* 700x1077* 700x955* 700x955* 700x1049* 519x676
+  700x554* 700x884* 700x559* 700x545* 700x867* 700x1058* 514x520 700x1075* 700x551* 700x1008*
+  333x235 151x250 164x250 400x302 132x250 196x250 333x249 700x2228* 333x249 150x250 400x287
+  400x542 400x322 333x249 192x250 333x121 400x272 400x400 400x516 333x198 400x308 316x250
+  161x250 187x250 333x247 331x250 333x242 135x250 333x249 400x448 400x222 219x250 272x250
+  258x250 333x249 400x474 400x257 265x250 187x250 333x235 333x204 400x720 400x224 185x250
+  264x250 400x617 333x131 152x250 333x249 333x201 333x220 400x272 400x298 171x129 400x727
+  333x249 307x250 400x225 308x250 152x250 400x139 333x225 400x300 187x250 400x224 400x148
+  333x188 155x250 187x250 187x250 400x314 400x437 700x432* 171x149 294x250 187x250 700x461*
+  187x250 187x250 400x300 311x250 400x261 333x202 187x250 160x250 199x250 400x180 186x250
+  333x236 400x515 400x268 171x154 189x250 333x246 400x261 400x281 286x142 197x250 333x237
+  333x122 400x715 187x250 400x409 400x411 333x227 400x337 258x250 313x250 333x231 400x722
+  400x224 400x680 192x250 400x613 333x249 333x249 400x365 333x249 400x443 400x262 313x250
+  700x942* 400x320 187x250 305x250 333x139 333x222 333x230 333x249 400x510 204x250 297x250
+  333x241 400x284 700x378 400x303 700x394 400x144 400x241 700x380 700x525 400x322 700x394
+  400x400 700x382 400x500 400x273 700x700 640x800 700x875* 700x700 700x682 700x564 441x551
+  700x700 700x594 700x367* 445x417 400x479 700x713 400x267 531x588 700x700 700x700 700x700
+  700x1342*
+`.trim().split(/\s+/);
+
 export const ARCHIVES = (() => {
   const names = ARCHIVE_NAMED.slice();
   for (let i = 1; i <= 166; i++) names.push(`JFeelgood painting ${String(i).padStart(3, '0')}.jpg`);
-  return names.map((name) => {
+  return names.map((name, i) => {
     const base = name.replace(/\.(jpe?g|png)$/i, '');
-    return {
-      name,
-      thumb: `assets/images/archives/thumbs/${base}.webp`,
-      full: `assets/images/archives/${name}`,
-      title: titleFromName(base),
-    };
+    const thumb = `assets/images/archives/thumbs/${base}.webp`;
+    const d = ARCHIVE_DIMS[i] || '';
+    const full = d.endsWith('*') ? `assets/images/archives/full/${base}.webp` : thumb;
+    const [w, h] = d.replace('*', '').split('x').map(Number);
+    return { name, thumb, full, w, h, title: titleFromName(base) };
   });
 })();
+
+
+// Pixel size of every non-archive image, so a panel can take its true shape at
+// hang time instead of starting square and jumping when the file lands.
+export const IMG_DIMS = {
+  'assets/images/cards/a-simple-meditation.webp': [640, 640],
+  'assets/images/cards/dream-mountain.webp': [640, 640],
+  'assets/images/cards/dreamfall.webp': [640, 640],
+  'assets/images/cards/sky-miles.webp': [640, 640],
+  'assets/images/cards/sweet-dreams.webp': [640, 640],
+  'assets/images/cards/veritas.webp': [640, 640],
+  'assets/images/opt/A Simple Meditation.webp': [1200, 1799],
+  'assets/images/opt/Adonis.webp': [1200, 927],
+  'assets/images/opt/Best Friend by JFeelgood.webp': [1200, 1581],
+  'assets/images/opt/Businessman by JFeelgood.webp': [1200, 1624],
+  'assets/images/opt/JFeelgood1.webp': [1200, 1200],
+  'assets/images/opt/JFeelgood2.webp': [1200, 1200],
+  'assets/images/opt/JFeelgood3.webp': [1200, 1200],
+  'assets/images/opt/JFeelgood4.webp': [1200, 1200],
+  'assets/images/opt/JFeelgood5.webp': [1200, 1200],
+  'assets/images/opt/JFeelgood6.webp': [1079, 1078],
+  'assets/images/opt/JFeelgood7.webp': [1079, 1078],
+  'assets/images/opt/JFeelgood8.webp': [1200, 1200],
+  'assets/images/opt/Lush by JFeelgood.webp': [1200, 1521],
+  'assets/images/opt/Permission by JFeelgood.webp': [1200, 600],
+  'assets/images/opt/Pride by JFeelgood.webp': [1200, 1536],
+  'assets/images/opt/TBOSW-Cover.webp': [720, 1280],
+  'assets/images/opt/The King by JFeelgood.webp': [1200, 1549],
+  'assets/images/opt/Thought Entropy Cover.webp': [600, 960],
+  'assets/images/opt/Vanity by JFeelgood.webp': [1200, 1504],
+  'assets/images/opt/Vicarious by JFeelgood.webp': [1200, 1597],
+  'assets/images/opt/dreamfall big.webp': [1200, 1502],
+  'assets/images/opt/jfeelgood.webp': [720, 1280],
+  'assets/images/opt/og-jfeelgood-1200x630.jpg': [1200, 630],
+  'assets/images/opt/path of privilege.webp': [358, 429],
+  'assets/images/opt/poetry of solace.webp': [1200, 927],
+  'assets/images/opt/veritas.webp': [1125, 825],
+  'assets/images/projects/driftbound.webp': [1400, 764],
+  'assets/images/projects/iexploreart.webp': [1400, 788],
+  'assets/images/projects/prototown.webp': [1400, 560],
+};
+
+for (const set of [FEATURED, SELF_WORK, STORY, BOOKS, CARDS]) {
+  for (const w of set) {
+    const d = IMG_DIMS[w.img];
+    if (d) { w.w = d[0]; w.h = d[1]; }
+  }
+}
