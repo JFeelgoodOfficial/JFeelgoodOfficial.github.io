@@ -288,11 +288,31 @@ export function buildBuilding(scene, mats) {
     // beam linking the two wings along the court's south edge, on slim columns
     box(x1 - x0 - 2 * T, 0.6, 0.5, (x0 + x1) / 2, H - 0.3, -(HW + T / 2), mats.plaster, { tile: 4, collide: false });
     for (const x of [x0 + 8, x0 + 20, x0 + 32]) column(x, -(HW + T / 2), H - 0.6, 0.24);
+    // and carries the court's own lighting. The court is the one room every
+    // visitor crosses twice and it had nothing over its floor at all: three
+    // lamps against the north wall, and open sky doing the rest, which leaves
+    // the middle of the building unlit the moment the sky is not doing it.
+    // A cove under the beam, then four downlights set between the columns
+    // (which stand at x0+8, x0+20 and x0+32) and a little clear of the beam —
+    // a fixture sharing a column's x sits inside it and blows it into a lit
+    // pillar, which the polished paving then mirrors back.
+    lightStrip(x0 + 2, x1 - 2, -(HW + T / 2), H - 0.62, 0.16, mats.lightStripWarm);
+    for (let i = 0; i < 4; i++) {
+      fixture(x0 + 2 + i * ((x1 - x0 - 4) / 3), H - 1.0, -(HW + T / 2) - 0.4, C.COURT_LIGHT_I, 0xffd9b4, C.COURT_LIGHT_RANGE);
+    }
     // stone curb around the pool
     box(px1 - px0 + 0.8, 0.12, 0.4, (px0 + px1) / 2, 0.06, pz0 - 0.2, mats.stoneWall, { tile: 4 });
     box(px1 - px0 + 0.8, 0.12, 0.4, (px0 + px1) / 2, 0.06, pz1 + 0.2, mats.stoneWall, { tile: 4 });
     box(0.4, 0.12, pz1 - pz0, px0 - 0.2, 0.06, (pz0 + pz1) / 2, mats.stoneWall, { tile: 4 });
     box(0.4, 0.12, pz1 - pz0, px1 + 0.2, 0.06, (pz0 + pz1) / 2, mats.stoneWall, { tile: 4 });
+    // A low line of light along each long curb: the pool is the centre of the
+    // court and went invisible the moment the sunset was out of it. Two lamps
+    // a side at the quarter points — a single one mid-curb throws its hotspot
+    // straight down the court's centreline, and the paving mirrors that too.
+    for (const z of [pz0 - 0.2, pz1 + 0.2]) {
+      lightStrip(px0 - 0.4, px1 + 0.4, z, 0.135, 0.12, mats.lightStripWarm);
+      for (const t of [0.25, 0.75]) fixture(px0 + t * (px1 - px0), 0.4, z, C.COURT_POOL_I, 0xffe3c4, 11);
+    }
     const basin = new THREE.Mesh(new THREE.BoxGeometry(px1 - px0, 0.5, pz1 - pz0), new THREE.MeshStandardMaterial({ color: 0x1b232a, roughness: 0.6 }));
     basin.position.set((px0 + px1) / 2, -0.25, (pz0 + pz1) / 2); root.add(basin);
     addBox(px0, px1, pz0, pz1); // you can't walk on water
@@ -312,10 +332,12 @@ export function buildBuilding(scene, mats) {
     addArea(x0 - 1.2, x0 + 1.2, -5.4, -0.6);
     addArea(x1 - 1.2, x1 + 1.2, 0.6, 5.4);
     // the court is roofless but the Self Work wall sits under a deep canopy:
-    // three fixtures along it, not one, so the whole north side reads at night
-    fixture((x0 + x1) / 2, H - 0.4, HW - 1.5, 50, 0xffd0a0, 34);
-    fixture(x0 + 10, H - 0.4, HW - 1.5, 50, 0xffd0a0, 34);
-    fixture(x1 - 10, H - 0.4, HW - 1.5, 50, 0xffd0a0, 34);
+    // a cove along the soffit and four fixtures under it, so the north side is
+    // lit by something the visitor can see, at the strength the wings are lit
+    lightStrip(x0 + 2, x1 - 2, HW - 1.2, H - 0.06, 0.2, mats.lightStripWarm);
+    for (let i = 0; i < 4; i++) {
+      fixture(x0 + 5 + i * ((x1 - x0 - 10) / 3), H - 0.4, HW - 1.5, C.COURT_CANOPY_I, 0xffd0a0, 34);
+    }
   }
 
   // --- star deck (east) ------------------------------------------------------
