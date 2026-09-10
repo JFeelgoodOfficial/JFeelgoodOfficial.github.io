@@ -57,6 +57,15 @@ export const C = {
   WING_LIGHT_STEP: 12,
   WING_LIGHT_RANGE: 26,
   WING_LIGHT_I: 95,
+
+  // The sunset court, the open room between the wings. It is roofless, so the
+  // sky lights it while the sky is bright — and left it dark the rest of the
+  // time. These are its own fixtures: the beam over the floor, the cove over
+  // the Self Work wall, and the line along the reflecting pool.
+  COURT_LIGHT_I: 62,
+  COURT_LIGHT_RANGE: 30,
+  COURT_CANOPY_I: 74,
+  COURT_POOL_I: 10,
 };
 
 // --- plan (x ranges) ---

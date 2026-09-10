@@ -224,6 +224,9 @@ export function createMaterials(quality = 'high') {
     }),
     lightStrip: new THREE.MeshStandardMaterial({ color: 0xfff4e0, emissive: 0xfff1d8, emissiveIntensity: 1.6, roughness: 1 }),
     lightStripCool: new THREE.MeshStandardMaterial({ color: 0xf4f6ff, emissive: 0xe6ecff, emissiveIntensity: 1.6, roughness: 1 }),
+    // the court's fittings, a touch warmer and softer than the wings' coves so
+    // they sit inside the sunset rather than fighting it
+    lightStripWarm: new THREE.MeshStandardMaterial({ color: 0xffeccd, emissive: 0xffd9a8, emissiveIntensity: 1.35, roughness: 1 }),
     bookCloth: new THREE.MeshStandardMaterial({ color: 0x2b2420, roughness: 0.9 }),
     pages: new THREE.MeshStandardMaterial({ color: 0xf1e9d8, roughness: 0.95 }),
   };
