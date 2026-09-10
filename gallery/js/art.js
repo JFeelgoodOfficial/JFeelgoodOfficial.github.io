@@ -42,7 +42,11 @@ export function createArt(scene, mats, renderer, opts = {}) {
   const quality = opts.quality || 'high';
   // shared by every painting shader: the exposure the final tone map will use
   const artExposure = { value: renderer.toneMappingExposure };
-  const tm = makeTextureManager(renderer, { maxResident: quality === 'low' ? 28 : 64, hz: 4 });
+  // A phone gets a smaller copy of each painting: the 1200px featured images are
+  // about twice the pixels a 2.8m plane can show at arm's length, and the upload
+  // is the expensive part on mobile. Desktop keeps the file as it came.
+  const texCap = quality === 'low' ? 1024 : 0;
+  const tm = makeTextureManager(renderer, { maxResident: quality === 'low' ? 28 : 64, hz: 4, maxInFlight: quality === 'low' ? 4 : 6 });
 
   const MAX = 260;
   const frameGeo = new THREE.BoxGeometry(1, 1, 1);
@@ -102,18 +106,24 @@ export function createArt(scene, mats, renderer, opts = {}) {
       frames.instanceMatrix.needsUpdate = true;
       if (e.plaque) e.plaque.position.set(w / 2 + 0.35, -(h / 2) + 0.2, 0.01);
     }
+    // The true aspect ratio ships with the work (content.js), so the canvas takes
+    // its real shape at hang time. Without it a painting hangs as a square and
+    // jumps to its own proportions when the image lands, in full view of anyone
+    // walking toward it. onSize stays as the fallback and the correction.
+    function fit(pw, ph) {
+      const aspect = pw / ph;
+      let w, h;
+      if (aspect >= 1) { w = maxDim; h = maxDim / aspect; } else { h = maxDim; w = maxDim * aspect; }
+      if (o.maxH && h > o.maxH) { const k = o.maxH / h; h *= k; w *= k; }
+      return [w, h];
+    }
+    if (work.w && work.h) { const [w, h] = fit(work.w, work.h); e.w = w; e.h = h; }
     layout(e.w, e.h);
 
     tm.register({
       mesh: art, url: work.thumb || work.img, worldPos: pos,
-      loadDist: o.loadDist || 34, keepDist: o.keepDist || 50, maxDim: 0, anisotropy: 8,
-      onSize: (pw, ph) => {
-        const aspect = pw / ph;
-        let w, h;
-        if (aspect >= 1) { w = maxDim; h = maxDim / aspect; } else { h = maxDim; w = maxDim * aspect; }
-        if (o.maxH && h > o.maxH) { const k = o.maxH / h; h *= k; w *= k; }
-        layout(w, h);
-      },
+      loadDist: o.loadDist || 34, keepDist: o.keepDist || 50, maxDim: texCap, anisotropy: 8,
+      onSize: (pw, ph) => layout(...fit(pw, ph)),
     });
 
     addRayTarget({
@@ -123,11 +133,14 @@ export function createArt(scene, mats, renderer, opts = {}) {
         if (o.card) {
           showCard({
             kicker: work.kicker || o.kicker, title: work.title, meta: work.meta, body: work.body,
-            img: work.img || work.full, alt: work.alt,
+            img: work.img || work.full, alt: work.alt, w: work.w, h: work.h,
             actions: work.actions || (work.buyUrl ? [{ label: work.buyLabel || 'Own it as a card — $23', href: work.buyUrl }] : []),
           });
         } else {
-          showViewer({ full: work.full || work.img, title: work.title, href: work.full || work.img });
+          showViewer({
+            full: work.full || work.img, title: work.title, alt: work.alt,
+            w: work.w, h: work.h, href: work.full || work.img,
+          });
         }
       },
     });

@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <title>Archives Wall – JFeelgood</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4e7d7">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23050509'/%3E%3Ccircle cx='16' cy='16' r='9' fill='%23f5b642'/%3E%3C/svg%3E">
   <meta name="description" content="An immersive wall of JFeelgood paintings from the archives – a visual timeline of nearly two decades of work.">
   <link rel="canonical" href="https://jfeelgood.com/archives.html" />
   <meta property="og:type" content="website">
@@ -11,22 +13,277 @@
   <meta property="og:site_name" content="JFeelgood Art">
   <meta property="og:title" content="Archives Wall – JFeelgood">
   <meta property="og:description" content="A wall of 186 paintings spanning 2004–2025 – experiments, detours, and breakthroughs from two decades of work.">
-  <meta property="og:image" content="https://jfeelgood.com/assets/images/opt/og-jfeelgood.jpg">
+  <meta property="og:image" content="https://jfeelgood.com/assets/images/opt/og-jfeelgood-1200x630.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Dreamfall, a painting by JFeelgood">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Archives Wall – JFeelgood">
   <meta name="twitter:description" content="A wall of 186 paintings spanning 2004–2025.">
-  <meta name="twitter:image" content="https://jfeelgood.com/assets/images/opt/og-jfeelgood.jpg">
+  <meta name="twitter:image" content="https://jfeelgood.com/assets/images/opt/og-jfeelgood-1200x630.jpg">
+  <meta name="twitter:image:alt" content="Dreamfall, a painting by JFeelgood">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "CollectionPage",
-    "name": "Archives Wall – JFeelgood",
-    "url": "https://jfeelgood.com/archives.html",
-    "description": "A wall of paintings by JFeelgood spanning 2004–2025.",
-    "author": { "@type": "Person", "name": "JFeelgood", "url": "https://jfeelgood.com/" }
+    "@graph": [
+      {
+        "@type": "CollectionPage",
+        "@id": "https://jfeelgood.com/archives.html#page",
+        "name": "Archives Wall – JFeelgood",
+        "url": "https://jfeelgood.com/archives.html",
+        "description": "A wall of 186 paintings by JFeelgood spanning 2004–2025.",
+        "isPartOf": {
+          "@id": "https://jfeelgood.com/#website"
+        },
+        "about": {
+          "@id": "https://jfeelgood.com/#artist"
+        },
+        "mainEntity": {
+          "@id": "https://jfeelgood.com/archives.html#wall"
+        }
+      },
+      {
+        "@type": "Person",
+        "@id": "https://jfeelgood.com/#artist",
+        "name": "JFeelgood",
+        "url": "https://jfeelgood.com/",
+        "jobTitle": "Artist"
+      },
+      {
+        "@type": "ImageGallery",
+        "@id": "https://jfeelgood.com/archives.html#wall",
+        "name": "JFeelgood archives wall, 2004–2025",
+        "description": "Every archived painting, from early experiments to the work that became Thought Entropy, Self Work and The Book of Shadow Work.",
+        "numberOfItems": 186,
+        "associatedMedia": [
+          {
+            "@type": "ImageObject",
+            "position": 1,
+            "name": "Vicarious",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/full/Vicarious.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/Vicarious.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "position": 2,
+            "name": "Best Friend",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/full/best%20friend.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/best%20friend.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "position": 3,
+            "name": "Businessman",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/full/businessman.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/businessman.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "position": 4,
+            "name": "Colossal Waste Of Time",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/thumbs/colossal%20waste%20of%20time.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/colossal%20waste%20of%20time.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "position": 5,
+            "name": "Crowned",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/full/crowned.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/crowned.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "position": 6,
+            "name": "Dream Mountain",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/full/dream%20mountain.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/dream%20mountain.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "position": 7,
+            "name": "Pooh",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/full/pooh.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/pooh.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "position": 8,
+            "name": "Sweet Dreams",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/full/sweet%20dreams.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/sweet%20dreams.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "position": 9,
+            "name": "A Simple Meditation",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/full/A%20Simple%20Meditation.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/A%20Simple%20Meditation.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "position": 10,
+            "name": "Adventure Awaits",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/thumbs/Adventure%20Awaits.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/Adventure%20Awaits.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "position": 11,
+            "name": "Affordable Housing",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/full/Affordable%20Housing.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/Affordable%20Housing.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "position": 12,
+            "name": "Chelsea Contemporary",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/full/Chelsea%20Contemporary.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/Chelsea%20Contemporary.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "position": 13,
+            "name": "Cornerstones",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/full/Cornerstones.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/Cornerstones.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "position": 14,
+            "name": "Gentrification",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/full/Gentrification.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/Gentrification.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "position": 15,
+            "name": "Grecia Monroc",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/full/Grecia%20Monroc.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/Grecia%20Monroc.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "position": 16,
+            "name": "Le Monarch",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/full/Le%20Monarch.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/Le%20Monarch.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "position": 17,
+            "name": "Liberty",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/thumbs/Liberty.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/Liberty.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "position": 18,
+            "name": "Ronin",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/full/Ronin.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/Ronin.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "position": 19,
+            "name": "Sentiments",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/full/Sentiments.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/Sentiments.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          },
+          {
+            "@type": "ImageObject",
+            "position": 20,
+            "name": "Supernova",
+            "contentUrl": "https://jfeelgood.com/assets/images/archives/full/Supernova.webp",
+            "thumbnailUrl": "https://jfeelgood.com/assets/images/archives/thumbs/Supernova.webp",
+            "creator": {
+              "@id": "https://jfeelgood.com/#artist"
+            }
+          }
+        ]
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Gallery",
+            "item": "https://jfeelgood.com/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Classic site",
+            "item": "https://jfeelgood.com/classic.html"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Archives wall",
+            "item": "https://jfeelgood.com/archives.html"
+          }
+        ]
+      }
+    ]
   }
   </script>
-  <script defer src="https://cdn.vercel-insights.com/v1/script.js"></script>
   <style>
   :root {
     /* Soft studio / paper palette */
@@ -341,8 +598,14 @@
         </div>
 
         <div class="archive-grid" id="archive-grid">
-          <!-- Images will be inserted here by JavaScript -->
+          <!-- Built by the module at the end of this file, from the same
+               ARCHIVES list the 3D gallery hangs. -->
         </div>
+        <noscript>
+          <p>The wall builds itself with JavaScript. Without it, the work is all
+          still here: <a href="classic.html">the classic site</a> has the
+          featured paintings, the Self Work series, the books and the cards.</p>
+        </noscript>
 
         <p class="archive-count" id="archive-count"></p>
       </div>
@@ -354,68 +617,69 @@
     </footer>
   </div>
 
-<script>
-  const archiveImages = [
-  "Vicarious.png",
-  "best friend.png",
-  "businessman.png",
-  "colossal waste of time.jpg",
-  "crowned.png",
-  "dream mountain.jpg",
-  "pooh.png",
-  "sweet dreams.png",
-  "A Simple Meditation.jpg",
-  "Adventure Awaits.jpg",
-  "Affordable Housing.jpg",
-  "Chelsea Contemporary.jpg",
-  "Cornerstones.jpg",
-  "Gentrification.jpg",
-  "Grecia Monroc.jpg",
-  "Le Monarch.jpg",
-  "Liberty.jpg",
-  "Ronin.jpg",
-  "Sentiments.jpg",
-  "Supernova.jpg"
-];
+<script type="module">
+  // The wall is built from the same list the 3D gallery hangs (content.js), so
+  // the two can never drift. Each work carries the pixel size of its thumbnail,
+  // which is what lets the browser hold the right shape in the masonry before
+  // any image has decoded — without it the columns re-balance on every load and
+  // lazy loading has nothing to measure against.
+  import { ARCHIVES } from './gallery/js/content.js';
 
-  for (let i = 1; i <= 166; i++) {
-  const num = String(i).padStart(3, "0"); // 1 -> "001"
-  archiveImages.push(`JFeelgood painting ${num}.jpg`);
-}
-const gridEl = document.getElementById('archive-grid');
-const countEl = document.getElementById('archive-count');
+  const gridEl = document.getElementById('archive-grid');
+  const countEl = document.getElementById('archive-count');
+  const frag = document.createDocumentFragment();
+  const pending = [];
 
-archiveImages.forEach(name => {
-  const item = document.createElement('div');
-  item.className = 'archive-item';
+  for (const work of ARCHIVES) {
+    const item = document.createElement('div');
+    item.className = 'archive-item';
 
-  const base = name.replace(/\.(jpe?g|png)$/i, '');
+    // Thumbnail in the grid; the click opens the largest version of the work
+    // that exists (a downscaled full view, or the thumbnail itself when the
+    // original was never bigger than one).
+    const link = document.createElement('a');
+    link.href = work.full;
+    link.target = '_blank';
+    link.rel = 'noopener';
 
-  // Small WebP thumbnail in the grid; click through to the full-resolution original.
-  const link = document.createElement('a');
-  link.href = 'assets/images/archives/' + name;
-  link.target = '_blank';
-  link.rel = 'noopener';
+    const img = document.createElement('img');
+    img.className = 'archive-img';
+    img.alt = work.title + ' \u2013 painting by JFeelgood';
+    img.width = work.w;
+    img.height = work.h;
+    img.decoding = 'async';
+    img.loading = 'lazy';
+    img.dataset.src = work.thumb;
 
-  const img = document.createElement('img');
-  img.className = 'archive-img';
-  img.src = 'assets/images/archives/thumbs/' + base + '.webp';
-  img.alt = base.replace(/[-_]/g, ' ') + ' – painting by JFeelgood';
-  img.loading = 'lazy';
-  img.decoding = 'async';
-  img.onerror = () => { img.onerror = null; img.src = 'assets/images/archives/' + name; };
+    link.appendChild(img);
+    item.appendChild(link);
+    frag.appendChild(item);
+    pending.push(img);
+  }
+  gridEl.appendChild(frag);
 
-  link.appendChild(img);
-  item.appendChild(link);
-  gridEl.appendChild(item);
-});
+  // loading="lazy" alone is too generous here: in a column-count masonry the
+  // browser reaches far past the fold and pulls a couple of megabytes of
+  // thumbnails before the visitor has scrolled at all. Watching each one
+  // instead loads a screen ahead and no further.
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        e.target.src = e.target.dataset.src;
+        io.unobserve(e.target);
+      }
+    }, { rootMargin: '600px 0px' });
+    for (const img of pending) io.observe(img);
+  } else {
+    for (const img of pending) img.src = img.dataset.src;
+  }
 
-if (countEl) {
-  countEl.textContent = archiveImages.length
-    ? archiveImages.length + " works from the archives."
-    : "";
-}
-
+  if (countEl) {
+    countEl.textContent = ARCHIVES.length
+      ? ARCHIVES.length + ' works from the archives.'
+      : '';
+  }
 </script>
 
 

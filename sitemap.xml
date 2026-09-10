@@ -1,26 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://jfeelgood.com/</loc>
-    <lastmod>2026-09-05</lastmod>
+    <lastmod>2026-09-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://jfeelgood.com/classic.html</loc>
-    <lastmod>2026-09-04</lastmod>
+    <lastmod>2026-09-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://jfeelgood.com/assets/images/opt/dreamfall%20big.webp</image:loc>
+      <image:title>Dreamfall</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://jfeelgood.com/assets/images/opt/poetry%20of%20solace.webp</image:loc>
+      <image:title>Poetry of Solace</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://jfeelgood.com/assets/images/opt/Adonis.webp</image:loc>
+      <image:title>Adonis</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://jfeelgood.com/assets/images/opt/veritas.webp</image:loc>
+      <image:title>Veritas</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://jfeelgood.com/assets/images/opt/path%20of%20privilege.webp</image:loc>
+      <image:title>Path of Privilege</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://jfeelgood.com/assets/images/opt/A%20Simple%20Meditation.webp</image:loc>
+      <image:title>A Simple Meditation</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://jfeelgood.com/assets/images/opt/Vanity%20by%20JFeelgood.webp</image:loc>
+      <image:title>Vanity — Self Work series</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://jfeelgood.com/assets/images/opt/The%20King%20by%20JFeelgood.webp</image:loc>
+      <image:title>The King — Self Work series</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://jfeelgood.com/archives.html</loc>
-    <lastmod>2026-07-20</lastmod>
+    <lastmod>2026-09-10</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://jfeelgood.com/llms.txt</loc>
-    <lastmod>2026-09-04</lastmod>
+    <lastmod>2026-09-10</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>

@@ -89,7 +89,7 @@ export function showCard(data) {
   el.innerHTML = `
     <div class="card-box">
       <button class="card-close" aria-label="Close">×</button>
-      ${data.img ? `<img src="${data.img}" alt="${escapeHtml(data.alt || data.title || '')}">` : ''}
+      ${data.img ? `<img src="${data.img}" alt="${escapeHtml(data.alt || data.title || '')}"${data.w && data.h ? ` width="${data.w}" height="${data.h}"` : ''} decoding="async">` : ''}
       <div class="card-text">
         ${data.kicker ? `<div class="card-kicker">${escapeHtml(data.kicker)}</div>` : ''}
         <h2 class="card-title">${escapeHtml(data.title || '')}</h2>
@@ -148,16 +148,21 @@ export function showDialogue(data) {
   return el;
 }
 
-// --- archive viewer (full-res image) ---
+// --- archive viewer (the work, full frame) ---
+// data.w/h are the work's pixel proportions, not the size of the file being
+// shown: they are here so the overlay reserves the right shape and the image
+// does not shove the caption around when it lands.
 export function showViewer(data) {
   const el = $('viewer');
   if (!el) return;
+  const size = data.w && data.h ? ` width="${data.w}" height="${data.h}"` : '';
+  const alt = escapeHtml(data.alt || `${data.title || 'Untitled'}, a painting by JFeelgood`);
   el.innerHTML = `
     <div class="viewer-box">
       <button class="card-close" aria-label="Close">×</button>
-      <img src="${data.full}" alt="${escapeHtml(data.title || '')}">
+      <img src="${data.full}" alt="${alt}"${size} decoding="async">
       <div class="viewer-caption">${escapeHtml(data.title || '')}</div>
-      <div class="viewer-sub">${data.href ? `<a href="${data.href}" target="_blank" rel="noopener">open full resolution ↗</a>` : ''}</div>
+      <div class="viewer-sub">${data.href ? `<a href="${data.href}" target="_blank" rel="noopener">open this work full frame ↗</a>` : ''}</div>
     </div>`;
   el.querySelector('.card-close').addEventListener('click', closeOverlays);
   openOverlay(el);

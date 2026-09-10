@@ -1,6 +1,24 @@
 /* jfeelgood.com walkable gallery — loader, HUD, cards.
    Palette mirrors the classic site: near-black + gold accent. */
 
+/* Both families are served from here rather than from Google: a third-party
+   stylesheet is a render-blocking round trip to another origin before the
+   title screen can paint. One variable file each covers every weight used. */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  src: url('../../assets/fonts/cormorant-garamond-var.woff2') format('woff2');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'DM Sans';
+  src: url('../../assets/fonts/dm-sans-var.woff2') format('woff2');
+  font-weight: 100 1000;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --bg: #050509;
   --bg-alt: #0b0b12;
@@ -94,6 +112,7 @@ canvas.gallery-canvas {
 .loader-title {
   font-family: var(--serif);
   font-weight: 300;
+  margin: 0;
   font-size: clamp(42px, 7vw, 72px);
   letter-spacing: 0.32em;
   margin-left: 0.32em; /* optically recenter the tracked-out text */
