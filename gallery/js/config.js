@@ -44,18 +44,24 @@ export const C = {
   // one full GGX evaluation per light into every lit fragment shader, and the
   // 22 lights this replaced compiled a shader mobile drivers refused to link,
   // which drew the whole building as nothing at all.
-  LIGHT_POOL: { low: 4, medium: 8, high: 8 },
+  LIGHT_POOL: { low: 4, medium: 10, high: 10 },
   // The low tier holds four rather than six: four fewer unrolled GGX
   // evaluations is exactly the headroom the phones that drew a black room were
   // short of, and the ambient and hemisphere fills indoors are now a real
   // light rather than a whisper, so the far end of a wing no longer depends on
-  // the two faintest fixtures the pool would otherwise carry.
+  // the two faintest fixtures the pool would otherwise carry. Desktop holds ten
+  // because RANGE below now reaches past eight fixtures: at eight slots the
+  // ninth and tenth still carry real light down the corridor and were being
+  // dropped.
   //
   // Wing fixtures hang in pairs (z = ±3.6) every STEP metres, reaching RANGE.
-  // Shorten RANGE much below STEP * 2 and the ceiling ahead goes dark: the long
-  // reach is what makes a wing read as a lit room rather than a row of spots.
+  // RANGE is a hard cutoff, not a fade: past it a fixture contributes exactly
+  // nothing. A wing is 84 m long, so a reach of two STEPs lit the few metres
+  // around the visitor and left the rest of the corridor to the indoor fill —
+  // the lamps ahead never appeared to come on. Four STEPs carries the light
+  // down the room. Costs no shader budget: range is a uniform, not a program.
   WING_LIGHT_STEP: 12,
-  WING_LIGHT_RANGE: 26,
+  WING_LIGHT_RANGE: 48,
   WING_LIGHT_I: 95,
 
   // The sunset court, the open room between the wings. It is roofless, so the
