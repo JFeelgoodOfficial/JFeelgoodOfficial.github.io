@@ -154,7 +154,7 @@ function titleFromName(base) {
 // sizes let both the wall panels and archives.html reserve the right shape
 // before a single byte of image has arrived.
 const ARCHIVE_DIMS = `
-  700x955* 700x955* 700x955* 510x276 700x955* 700x1077* 700x955* 700x955* 700x1049* 519x676
+  700x955* 700x955* 700x955* 510x276 700x955* 700x1077* 700x955* 700x955* 700x1049 519x676
   700x554* 700x884* 700x559* 700x545* 700x867* 700x1058* 514x520 700x1075* 700x551* 700x1008*
   333x235 151x250 164x250 400x302 132x250 196x250 333x249 700x2228* 333x249 150x250 400x287
   400x542 400x322 333x249 192x250 333x121 400x272 400x400 400x516 333x198 400x308 316x250
@@ -174,6 +174,13 @@ const ARCHIVE_DIMS = `
   700x1342*
 `.trim().split(/\s+/);
 
+// Archive works that already ship at 1200px for the featured or Self Work
+// panels click through to that file instead of carrying a second full-view
+// copy under archives/full/. One painting, one file per size.
+const ARCHIVE_FULL = {
+  'A Simple Meditation': 'assets/images/opt/A Simple Meditation.webp',
+};
+
 export const ARCHIVES = (() => {
   const names = ARCHIVE_NAMED.slice();
   for (let i = 1; i <= 166; i++) names.push(`JFeelgood painting ${String(i).padStart(3, '0')}.jpg`);
@@ -181,7 +188,8 @@ export const ARCHIVES = (() => {
     const base = name.replace(/\.(jpe?g|png)$/i, '');
     const thumb = `assets/images/archives/thumbs/${base}.webp`;
     const d = ARCHIVE_DIMS[i] || '';
-    const full = d.endsWith('*') ? `assets/images/archives/full/${base}.webp` : thumb;
+    const full = ARCHIVE_FULL[base]
+      || (d.endsWith('*') ? `assets/images/archives/full/${base}.webp` : thumb);
     const [w, h] = d.replace('*', '').split('x').map(Number);
     return { name, thumb, full, w, h, title: titleFromName(base) };
   });
