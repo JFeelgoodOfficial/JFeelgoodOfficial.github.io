@@ -1,0 +1,9 @@
+# Files no visitor ever requests. They stay in git but are left out of every
+# deployment, because Vercel stores each deployment in full and keeps it.
+# Keep this list in step with "ignoreCommand" in vercel.json: a push that
+# touches only these paths should not build at all.
+CLAUDE.md
+README
+.nojekyll
+.claude/
+.github/

@@ -5,6 +5,7 @@
       "claude/*": false
     }
   },
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':!CLAUDE.md' ':!README' ':!.nojekyll' ':!.claude' ':!.github'",
   "headers": [
     {
       "source": "/assets/(.*)",
