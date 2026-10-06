@@ -34,7 +34,7 @@ export const C = {
   ART_MAX: 2.1,         // max painting dimension (m)
   ART_MAX_FEATURED: 2.8,
   ART_MAX_SELFWORK: 2.4,
-  SLOT_STEP: 3.0,       // wall spacing between paintings (186 works have to fit)
+  SLOT_STEP: 3.0,       // wall spacing between paintings (185 works have to fit)
   SEA_Y: -7,            // sea surface (the gallery stands on a headland plinth)
 
   // --- lighting ---

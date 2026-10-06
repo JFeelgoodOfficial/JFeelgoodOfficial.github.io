@@ -1,14 +1,14 @@
 # JFeelgood
 
-> Original paintings, the Self Work series, books, limited-edition collectible art cards, and a set of worlds and games being built by JFeelgood — an Austin, Texas-based artist with over 18 years of creative work across hundreds of paintings, five published books, five music albums, and video games. The homepage is a walkable first-person 3D gallery in which every painting hangs.
+> Original paintings, the Self Work series, books, limited-edition collectible art cards, and a set of worlds and games being built by JFeelgood — an Austin, Texas-based artist, painting since 2004, with hundreds of paintings, five published books, five music albums, and video games. The homepage is a walkable first-person 3D gallery in which every painting hangs.
 
 JFeelgood creates one-of-a-kind original artworks that explore identity, resilience, solitude, ego, and the human experience. Work spans acrylic, mixed media, gold leaf, epoxy resin, spray paint, and found materials on canvas and wood. Alongside the paintings, JFeelgood builds software: virtual galleries, browser games, and world-building projects.
 
 ## Site Pages
 
-- [Home — The Gallery](https://jfeelgood.com/): A title screen offering two ways in — the gallery, or the classic site. The gallery is a first-person 3D building on a stone headland above the sea (WebGL; desktop with keyboard and mouse, phones and tablets with on-screen touch controls). It runs west to east: a Sunrise Terrace where the five featured paintings hang facing the dawn over the water; the West Wing and East Wing, two long indoor rooms holding all 186 archive paintings on polished concrete floors; the Sunset Court between them, roofless and open to the southern sea, where the eight Self Work paintings hang under a canopy in low evening light beside a reflecting pool; and the Star Deck at the far end under deep space — the Milky Way, a nebula, and stars — with lit cases for the books, the art cards, and the other worlds being built. Pressing E (or the ACT button) on a painting opens it full frame, with its title and details.
+- [Home — The Gallery](https://jfeelgood.com/): A title screen offering two ways in — the gallery, or the classic site. The gallery is a first-person 3D building on a stone headland above the sea (WebGL; desktop with keyboard and mouse, phones and tablets with on-screen touch controls). It runs west to east: a Sunrise Terrace where the five featured paintings hang facing the dawn over the water; the West Wing and East Wing, two long indoor rooms holding all 185 archive paintings on polished concrete floors; the Sunset Court between them, roofless and open to the southern sea, where the eight Self Work paintings hang under a canopy in low evening light beside a reflecting pool; and the Star Deck at the far end under deep space — the Milky Way, a nebula, and stars — with lit cases for the books, the art cards, and the other worlds being built. Pressing E (or the ACT button) on a painting opens it full frame, with its title and details.
 - [Classic Site](https://jfeelgood.com/classic.html): The same work as a traditional page, organised as one section per thing being made — featured paintings, the gallery, the archives, the Self Work series, books, collectible cards, iExploreArt, Prototown, Driftbound, NOVA 7, the story of growth, and about the artist. Served automatically to browsers without WebGL2.
-- [Archives Wall](https://jfeelgood.com/archives.html): 186 paintings spanning 2004–2025 in a single scrolling wall, each opening to a larger view. The same 186 works hang along the two wings of the 3D gallery.
+- [Archives Wall](https://jfeelgood.com/archives.html): 185 paintings spanning 2004–2025 in a single scrolling wall, each opening to a larger view. The same 185 works hang along the two wings of the 3D gallery.
 
 ## Projects (worlds, galleries, games)
 
@@ -30,15 +30,13 @@ Museum-quality 2.5" × 3.5" art card reproductions of selected paintings, sealed
 - [Veritas](https://minicuration.com/shop/veritas.html): $23. Edition of 50.
 - [Sweet Dreams](https://minicuration.com/shop/sweet-dreams.html): $23. Edition of 50.
 
-## Original Paintings
+## Paintings
 
-Originals are one-of-one and never reproduced as originals. Selected available works (inquiries via [Instagram @artistjfeelgood](https://www.instagram.com/artistjfeelgood)):
-
-- Poetry of Solace: $900. 16×20 in. Acrylic on canvas. A solitary figure on a glowing pathway beneath a star-studded sky. From the series "The Lost." Featured in *Thought Entropy*.
-- Adonis: $400. 16×20 in. Acrylic on canvas. A stylized face in soft muted tones against vibrant yellow. Single blue tear.
-- Veritas: $1,200. 24×30 in. Mixed media on canvas. A transparent princess figure on stage against an abstract explosion of color.
-- Path of Privilege: $2,000. 12×12 in, depth 4 in. Mixed media on wood — gold leaf, epoxy resin, affixed paintbrushes. Commentary on race, systemic inequality, and privilege.
-- The Mother Essence: $5,000. 36×36 in. Acrylic, latex, spray paint, acetone, found paper on hand-stretched canvas. Created 2011. From the private *Past & Future* series.
+- Poetry of Solace: 16×20 in. Acrylic on canvas. A solitary figure on a glowing pathway beneath a star-studded sky. From the series "The Lost." Featured in *Thought Entropy*.
+- Adonis: 16×20 in. Acrylic on canvas. A stylized face in soft muted tones against vibrant yellow. Single blue tear.
+- Veritas: 24×30 in. Mixed media on canvas. A transparent princess figure on stage against an abstract explosion of color.
+- Path of Privilege: 12×12 in, depth 4 in. Mixed media on wood — gold leaf, epoxy resin, affixed paintbrushes. Commentary on race, systemic inequality, and privilege.
+- The Mother Essence: 36×36 in. Acrylic, latex, spray paint, acetone, found paper on hand-stretched canvas. Created 2011. From the private *Past & Future* series.
 
 The five featured works (Poetry of Solace, Adonis, Veritas, Path of Privilege, A Simple Meditation) hang on the Sunrise Terrace of the gallery.
 
@@ -56,7 +54,7 @@ The five featured works (Poetry of Solace, Adonis, Veritas, Path of Privilege, A
 
 ## About the Artist
 
-JFeelgood has over 18 years of experience across painting, mixed media, sculpture, writing, music, game design, and software. He has produced several hundred original paintings, five published books, five music albums, and video games, and builds virtual galleries and browser games ([iExploreArt](https://iexploreart.com), [Prototown](https://prototown.vercel.app), [Driftbound](https://driftbound.vercel.app), [NOVA 7](https://nova7game.org)). He has organized community art events and served in leadership roles at art organizations.
+JFeelgood has worked since 2004 across painting, mixed media, sculpture, writing, music, game design, and software. He has produced several hundred original paintings, five published books, five music albums, and video games, and builds virtual galleries and browser games ([iExploreArt](https://iexploreart.com), [Prototown](https://prototown.vercel.app), [Driftbound](https://driftbound.vercel.app), [NOVA 7](https://nova7game.org)). He has organized community art events and served in leadership roles at art organizations.
 
 In 2019 JFeelgood chose sobriety — from alcohol, cigarettes, self-medication, and the life he had been living — and channeled that transformation into the Self Work series. His practice is rooted in accountability, introspection, and the belief that powerful messages need very little to convey their strength.
 
