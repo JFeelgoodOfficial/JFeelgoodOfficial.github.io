@@ -1,4 +1,4 @@
-// Proximity texture manager. The archive gallery hangs 186 paintings; loading
+// Proximity texture manager. The archive gallery hangs 185 paintings; loading
 // every 700px WebP at once would cost ~700 MB of VRAM, so panels load their
 // texture only when the camera is near and dispose it when far, with a hard
 // cap on how many stay resident, and downscales oversized art (the 1200px opt/

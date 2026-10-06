@@ -6,7 +6,7 @@ Static site for JFeelgood — paintings, the Self Work series, books, limited-ed
 
 - `index.html` — the title screen and the walkable 3D gallery (Three.js r165, WebGL2). Every visitor lands on a title screen offering **ENTER THE GALLERY** or **CLASSIC SITE**; nothing heavy loads until the gallery is chosen. Loads `gallery/js/boot.js`, which imports the rest only when the gallery is asked for. Only browsers without WebGL2 are sent to the classic-only card.
 - `classic.html` — the traditional page, one section per thing being made: featured paintings, the gallery, the archives, the Self Work series, books, Collect (limited-edition cards), iExploreArt, Prototown, Driftbound, NOVA 7, the story of growth, about. Tall bold white "thoughts" (`p.thought`) sit between sections as copy, while each section keeps its own small `h2`.
-- `archives.html` — "Archives Wall": masonry grid of 186 paintings (2004–2025), built as a module from the same `ARCHIVES` list the gallery hangs, from lazy-loaded WebP thumbnails that click through to the largest version of each work.
+- `archives.html` — "Archives Wall": masonry grid of 185 paintings (2004–2025), built as a module from the same `ARCHIVES` list the gallery hangs, from lazy-loaded WebP thumbnails that click through to the largest version of each work.
 - `llms.txt` — machine-readable summary for AI crawlers and answer engines. Keep it in sync with the real pages, products and projects.
 - `robots.txt` / `sitemap.xml` — crawl config; AI crawlers are explicitly allowed.
 - `CLAUDE.md` — conventions and how-tos for anyone (or any agent) editing the site.

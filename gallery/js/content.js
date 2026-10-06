@@ -132,9 +132,13 @@ export const LINKS = {
   shadowWork: 'https://thebookofshadowwork.com',
 };
 
-// The 186 archive works, in the same order as archives.html: 20 named + a
-// generated run of 166. Each entry has the 700px thumbnail (for the gallery
-// panels), the full-resolution original (click-through), and a display title.
+// The 185 archive works, in the same order as archives.html: 20 named + a
+// generated run of 001…166, less the numbers in ARCHIVE_DROPPED. Each entry
+// has the 700px thumbnail (for the gallery panels), the full-resolution
+// original (click-through), and a display title.
+// Numbers left out of the generated run: 052 was a second copy of 017.
+const ARCHIVE_DROPPED = [52];
+
 const ARCHIVE_NAMED = [
   'Vicarious.png', 'best friend.png', 'businessman.png', 'colossal waste of time.jpg',
   'crowned.png', 'dream mountain.jpg', 'pooh.png', 'sweet dreams.png',
@@ -160,7 +164,7 @@ const ARCHIVE_DIMS = `
   400x542 400x322 333x249 192x250 333x121 400x272 400x400 400x516 333x198 400x308 316x250
   161x250 187x250 333x247 331x250 333x242 135x250 333x249 400x448 400x222 219x250 272x250
   258x250 333x249 400x474 400x257 265x250 187x250 333x235 333x204 400x720 400x224 185x250
-  264x250 400x617 333x131 152x250 333x249 333x201 333x220 400x272 400x298 171x129 400x727
+  264x250 400x617 333x131 152x250 333x249 333x201 333x220 400x298 171x129 400x727
   333x249 307x250 400x225 308x250 152x250 400x139 333x225 400x300 187x250 400x224 400x148
   333x188 155x250 187x250 187x250 400x314 400x437 700x432* 171x149 294x250 187x250 700x461*
   187x250 187x250 400x300 311x250 400x261 333x202 187x250 160x250 199x250 400x180 186x250
@@ -175,8 +179,8 @@ const ARCHIVE_DIMS = `
 `.trim().split(/\s+/);
 
 // What each untitled archive work shows, one sentence each, in the same order
-// as the generated run (painting 001 first). Used as alt text only; the wall
-// itself stays uncaptioned. An empty slot falls back to the generated title.
+// as the generated run (painting 001 first, dropped numbers skipped). Used as
+// alt text only; the wall itself stays uncaptioned. An empty slot falls back to the generated title.
 const ARCHIVE_ALT = [
   /* 001 */ 'Glowing red figure in a conical hat seen through a curved blue window frame onto palm trees and a sunny beach.',
   /* 002 */ 'Dark blue petaled flower with a crumpled gold center on a tall stem against a textured peach background.',
@@ -229,7 +233,6 @@ const ARCHIVE_ALT = [
   /* 049 */ 'Skeleton in a hat smoking and holding a rifle against yellow ground with pink and blue circles.',
   /* 050 */ 'Teal and white concentric circles over red and blue swirls with a winding green and purple band.',
   /* 051 */ 'Small glowing figure in robes holding a staff beneath streaming blue light in a dark blue space.',
-  /* 052 */ 'Woman in red lying in a framed rectangle on a shore near a long pier, under green and blue streaked sky.',
   /* 053 */ 'Glowing yellow music notes on two canvases, one black and one white with black paint splatter.',
   /* 054 */ 'Pointillist city skyline in dots of white, purple, and blue reflected in water at night.',
   /* 055 */ 'Yellow arc falling from a speckled dark sky into wavy yellow and gray striped water with a pale glow.',
@@ -355,7 +358,10 @@ const ARCHIVE_FULL = {
 
 export const ARCHIVES = (() => {
   const names = ARCHIVE_NAMED.slice();
-  for (let i = 1; i <= 166; i++) names.push(`JFeelgood painting ${String(i).padStart(3, '0')}.jpg`);
+  for (let i = 1; i <= 166; i++) {
+    if (ARCHIVE_DROPPED.includes(i)) continue;
+    names.push(`JFeelgood painting ${String(i).padStart(3, '0')}.jpg`);
+  }
   return names.map((name, i) => {
     const base = name.replace(/\.(jpe?g|png)$/i, '');
     const thumb = `assets/images/archives/thumbs/${base}.webp`;
