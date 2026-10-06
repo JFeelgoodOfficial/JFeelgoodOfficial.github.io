@@ -65,4 +65,4 @@ The Collect section sells limited-edition art cards (editions of 50, $23) fulfil
 
 ## Styling
 
-`classic.html` and `archives.html` keep their CSS inline in each page's `<style>` block; the gallery's CSS lives in `gallery/css/gallery.css` (title screen, HUD, cards, the `#touch` control layer, and the `html.touch` / `@media` mobile rules). Fonts: Cormorant Garamond + DM Sans via Google Fonts. Dark palette with gold accent (`--accent: #f5b642`) on index and classic; light paper palette on archives.
+`classic.html` and `archives.html` keep their CSS inline in each page's `<style>` block; the gallery's CSS lives in `gallery/css/gallery.css` (title screen, HUD, cards, the `#touch` control layer, and the `html.touch` / `@media` mobile rules). Fonts: Cormorant Garamond + DM Sans, self-hosted from `assets/fonts/`. Dark palette with gold accent (`--accent: #f5b642`) on index and classic; light paper palette on archives.

@@ -110,7 +110,7 @@ export const BOOKS = [
 // Collectible cards ($23, edition of 50). `slug` feeds the live-stock lookup.
 export const CARDS = [
   { title: 'Dreamfall', slug: 'dreamfall', img: 'assets/images/cards/dreamfall.webp',
-    buyUrl: 'https://buy.stripe.com/28E8wI3if9Xa8dgdTYaVa02?client_reference_id=jfeelgood' },
+    buyUrl: 'https://buy.stripe.com/aFa5kwbOLedqfFI5nsaVa0k?client_reference_id=jfeelgood' },
   { title: 'Dream Mountain', slug: 'dream-mountain', img: 'assets/images/cards/dream-mountain.webp',
     buyUrl: 'https://buy.stripe.com/5kQ7sEaKH3yM514dTYaVa03?client_reference_id=jfeelgood' },
   { title: 'Sky Miles', slug: 'sky-miles', img: 'assets/images/cards/sky-miles.webp',
@@ -174,6 +174,11 @@ const ARCHIVE_DIMS = `
   700x1342*
 `.trim().split(/\s+/);
 
+// What each untitled archive work shows, one sentence each, in the same order
+// as the generated run (painting 001 first). Used as alt text only; the wall
+// itself stays uncaptioned. An empty slot falls back to the generated title.
+const ARCHIVE_ALT = [];
+
 // Archive works that already ship at 1200px for the featured or Self Work
 // panels click through to that file instead of carrying a second full-view
 // copy under archives/full/. One painting, one file per size.
@@ -191,7 +196,10 @@ export const ARCHIVES = (() => {
     const full = ARCHIVE_FULL[base]
       || (d.endsWith('*') ? `assets/images/archives/full/${base}.webp` : thumb);
     const [w, h] = d.replace('*', '').split('x').map(Number);
-    return { name, thumb, full, w, h, title: titleFromName(base) };
+    const title = titleFromName(base);
+    const seen = ARCHIVE_ALT[i - ARCHIVE_NAMED.length];
+    const alt = seen ? `${seen} Painting by JFeelgood.` : `${title}, painting by JFeelgood`;
+    return { name, thumb, full, w, h, title, alt };
   });
 })();
 

@@ -58,7 +58,7 @@ The repository is what gets deployed, every push, so its size is a running cost 
 ### Adding a painting
 
 1. Put the optimized image in `assets/images/opt/` (featured / Self Work, 1200px WebP) or `assets/images/archives/thumbs/` (archive, 700px WebP thumb). If the archive original is meaningfully larger than 700px, also write a 1400px WebP into `assets/images/archives/full/` under the same base name — that is what the click-through opens. The original itself does not go in the repo.
-2. Add it to `gallery/js/content.js` (`FEATURED`, `SELF_WORK`, or the `ARCHIVE_NAMED` list / count) **and give it its pixel size**: an entry in `IMG_DIMS`, or a `WxH` entry in the same position in `ARCHIVE_DIMS` (suffix `*` if it has a `full/` file). The archive hangs in list order along the walls; if `window.__hung.archive` comes back short, lower `C.SLOT_STEP` (≥ 2.9) or lengthen the wings in `PLAN`.
+2. Add it to `gallery/js/content.js` (`FEATURED`, `SELF_WORK`, or the `ARCHIVE_NAMED` list / count) **and give it its pixel size**: an entry in `IMG_DIMS`, or a `WxH` entry in the same position in `ARCHIVE_DIMS` (suffix `*` if it has a `full/` file). An untitled archive work also gets a one-sentence description of what is painted in `ARCHIVE_ALT`, in the same order; that is its `alt` on the wall page and in the gallery viewer, while the visible wall stays uncaptioned. The archive hangs in list order along the walls; if `window.__hung.archive` comes back short, lower `C.SLOT_STEP` (≥ 2.9) or lengthen the wings in `PLAN`.
 3. Mirror it on `classic.html` (with `width`/`height` on the `<img>`), and in `llms.txt` if it's a featured or priced work. `archives.html` needs nothing — it reads `ARCHIVES` from `content.js`.
 
 ### Adding a place or zone
