@@ -220,17 +220,13 @@ function setupCases() {
         pos, radius: 3.2, prompt: '<b>E</b> — other worlds I’m building',
         action: () => showCard({
           kicker: 'In progress', title: 'Other worlds',
-          meta: 'Galleries, games, and places to walk into',
+          meta: 'Galleries and universes to walk into',
           body: [
             'iExploreArt — walkable virtual galleries for contemporary artists, each with a curator and a hall of their own.',
-            'Prototown — a browser 4X strategy game: found cities, research, out-think rival tribes, solo or with a friend.',
-            'Driftbound — a top-down survival adventure. Six shards. One shore. No way back.',
-            'NOVA 7 — a classic arcade shooter about one thing: the high score.',
+            'NOVA 7 — a universe to fly through: land on other planets and talk with the people there. Some worlds come from my books, the nebulae are named after my paintings, and the stars hide secrets.',
           ],
           actions: [
             { label: 'iexploreart.com', href: 'https://iexploreart.com' },
-            { label: 'Prototown', href: 'https://prototown.vercel.app' },
-            { label: 'Driftbound', href: 'https://driftbound.vercel.app' },
             { label: 'NOVA 7', href: LINKS.nova7 },
             { label: 'Everything, on the classic site', href: LINKS.classic, ghost: true },
           ],

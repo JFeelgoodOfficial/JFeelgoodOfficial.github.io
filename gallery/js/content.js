@@ -412,9 +412,7 @@ export const IMG_DIMS = {
   'assets/images/opt/path of privilege.webp': [358, 429],
   'assets/images/opt/poetry of solace.webp': [1200, 927],
   'assets/images/opt/veritas.webp': [1125, 825],
-  'assets/images/projects/driftbound.webp': [1400, 764],
   'assets/images/projects/iexploreart.webp': [1400, 788],
-  'assets/images/projects/prototown.webp': [1400, 560],
 };
 
 for (const set of [FEATURED, SELF_WORK, STORY, BOOKS, CARDS]) {
