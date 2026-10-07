@@ -68,7 +68,7 @@ Add its x-range to `PLAN`, a `PLACES` entry (used by `?debug=at:` and the compas
 ## Classic site conventions (`classic.html`)
 
 - Structure is `<p class="thought">` + `<section id="…">` pairs. The thought is copy (a provocation about the coming section), not a heading; the section's small uppercase `h2` is the real heading. Don't turn thoughts into `h*` elements.
-- Sections in order: hero, featured, gallery, archives-promo, selfwork, books, collect, iexploreart, prototown, driftbound, nova7, story, about. New project = one thought + one section using the shared `.project-grid` layout and an image in `assets/images/projects/` (1400px WebP, descriptive alt).
+- Sections in order: hero, featured, gallery, archives-promo, selfwork, books, collect, iexploreart, nova7, story, about. New project = one thought + one section using the shared `.project-grid` layout and an image in `assets/images/projects/` (1400px WebP, descriptive alt).
 - Never touch the commerce plumbing without checking the minicuration repo: Stripe hrefs, `data-buy-slug`, `data-stock-slug`, and the stock fetch script.
 - Carousel data (featured, story, selfwork) is duplicated in `classic.html` and `gallery/js/content.js`; keep the two in sync.
 
