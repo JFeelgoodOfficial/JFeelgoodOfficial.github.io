@@ -1133,10 +1133,23 @@
     /* Collect — limited edition cards */
 
     .collect-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      display: flex;
       gap: 16px;
       margin-top: 6px;
+      padding: 4px 0 6px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scroll-behavior: smooth;
+      scrollbar-width: none;
+    }
+
+    .collect-grid::-webkit-scrollbar {
+      display: none;
+    }
+
+    .collect-grid > .collect-card {
+      flex: 0 0 calc((100% - 32px) / 3);
+      scroll-snap-align: start;
     }
 
     .collect-card {
@@ -1227,6 +1240,28 @@
       align-items: flex-start;
     }
 
+    .about-portrait {
+      width: 100%;
+      max-width: 260px;
+      height: auto;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.25);
+      box-shadow: 0 14px 32px rgba(0,0,0,0.8);
+      display: block;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
     .about-body p + p {
       margin-top: 8px;
     }
@@ -1308,6 +1343,9 @@
       .project-grid.reverse .project-media {
         order: 0;
       }
+      .collect-grid > .collect-card {
+        flex-basis: calc((100% - 16px) / 2);
+      }
     }
 
     @media (max-width: 520px) {
@@ -1326,6 +1364,12 @@
       }
       .books-cta {
         padding: 16px 14px;
+      }
+      .about-portrait {
+        max-width: 210px;
+      }
+      .collect-grid > .collect-card {
+        flex-basis: 84%;
       }
     }
   </style>
@@ -1356,9 +1400,9 @@
               <div class="chip-row">
                 <span class="chip">Art is the breath of life, this is my study of it.</span>
               </div>
-              <h1 class="hero-title">I build places you can walk into.</h1>
+              <h1 class="hero-title">I turn paintings into places.</h1>
               <p class="hero-sub">
-                Paintings first — two decades of them, now hung in a gallery you can walk through. Then the worlds that grew out of the same practice: virtual galleries for other artists, two games, and the books where the canvas ran out of room.
+                Paintings first: two decades of them, now hung in a gallery you can walk through. Then the worlds that grew out of the same practice: virtual galleries for other artists, the books where the canvas ran out of room, and an entire universe that explores my creations in immersive ways.
               </p>
               <p class="hero-quote">
                 “My soul sits in the shadows of my mind, watching the lights of life project onto the subconscious theater.”
@@ -1373,7 +1417,7 @@
                 </a>
               </div>
               <div class="hero-tagline">
-                Paintings • Worlds • Games • Books
+                Paintings • Worlds • Books
               </div>
             </div>
 
@@ -1640,7 +1684,7 @@
             Selected paintings, reproduced as museum-quality 2.5″ × 3.5″ art cards in a magnetic acrylic display case. Each design is a strictly numbered edition of 50 — once they're gone, they're gone. Sold through <a href="https://minicuration.com/?utm_source=jfeelgood&amp;utm_medium=referral&amp;utm_campaign=collect" target="_blank" rel="noopener">minicuration</a>.
           </p>
 
-          <div class="collect-grid">
+          <div class="collect-grid" id="collect-track" tabindex="0" aria-label="Limited edition cards, scroll sideways for more">
             <article class="collect-card">
               <img class="collect-thumb" loading="lazy" decoding="async" src="assets/images/cards/dreamfall.webp" alt="Dreamfall limited edition art card in acrylic display case" width="640" height="640">
               <div>
@@ -1720,6 +1764,17 @@
             </article>
           </div>
 
+          <div class="carousel-controls">
+            <div class="carousel-buttons">
+              <button class="carousel-btn" id="collect-prev" aria-label="Previous cards">←</button>
+              <button class="carousel-btn" id="collect-next" aria-label="Next cards">→</button>
+            </div>
+            <div class="carousel-index" id="collect-index">1 / 6</div>
+            <div>
+              <span style="font-size:0.78rem;color:var(--text-muted);">Six designs, fifty of each.</span>
+            </div>
+          </div>
+
           <p class="collect-trust">Secure Stripe checkout · Ships 5–7 days · 14-day guarantee · Fulfilled by minicuration.com</p>
         </div>
       </section>
@@ -1771,9 +1826,11 @@
         </div>
       </section>
 
+<p class="thought">Story of growth.</p>
+
 <section id="story">
   <div class="section-inner">
-    <h2>Story of growth</h2>
+    <h2 class="visually-hidden">Story of growth</h2>
     <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;">
       A brief walk from early chaos and curiosity, through Thought Entropy, into the first steps of Self Work.
     </p>
@@ -1838,7 +1895,7 @@
     <div style="margin-bottom:10px;">
       <img loading="lazy" decoding="async" src="assets/images/opt/jfeelgood.webp"
            alt="Portrait of artist JFeelgood"
-           style="width:100%;max-width:260px;border-radius:14px;border:1px solid rgba(255,255,255,0.25);box-shadow:0 14px 32px rgba(0,0,0,0.8);display:block;" width="720" height="1280">
+           class="about-portrait" width="720" height="1280">
     </div>
     <div class="press-quote">
       “Listening to Jonny talk about his art, his loves, his life is like witnessing some type of soft-spoken performance art... I found myself mesmerized; hanging on every word.” – The Confounded Cook (2011)
@@ -2250,6 +2307,29 @@ sNextBtn.addEventListener('click', () => {
 });
 
 renderStory();
+
+// Collect cards slide sideways; the arrows move one card at a time and the
+// counter follows the first card in view.
+(function () {
+  const track = document.getElementById('collect-track');
+  const cards = track ? track.querySelectorAll('.collect-card') : [];
+  if (!cards.length) return;
+  const indexEl = document.getElementById('collect-index');
+  const step = () => cards[0].getBoundingClientRect().width + parseFloat(getComputedStyle(track).columnGap || 16);
+  const first = () => Math.min(cards.length - 1, Math.round(track.scrollLeft / step()));
+  const atEnd = () => track.scrollLeft + track.clientWidth >= track.scrollWidth - 4;
+  const update = () => { indexEl.textContent = (first() + 1) + ' / ' + cards.length; };
+  document.getElementById('collect-next').addEventListener('click', () => {
+    if (atEnd()) track.scrollTo({ left: 0 });
+    else track.scrollBy({ left: step() });
+  });
+  document.getElementById('collect-prev').addEventListener('click', () => {
+    if (track.scrollLeft <= 4) track.scrollTo({ left: track.scrollWidth });
+    else track.scrollBy({ left: -step() });
+  });
+  track.addEventListener('scroll', update, { passive: true });
+  update();
+})();
 
 // Live edition availability for the Collect section, from minicuration.com.
 // If the request fails (offline, CORS, endpoint down) the static
