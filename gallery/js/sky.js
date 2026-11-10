@@ -172,7 +172,10 @@ varying vec3 vDir;
 void main() {
   vDir = (modelMatrix * vec4(position, 1.0)).xyz - cameraPosition;
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  gl_Position = projectionMatrix * mv;
+  // z = w puts every fragment exactly on the far plane, so the dome can be
+  // drawn after the building and the depth test throws away whatever a wall,
+  // floor or ceiling already covers
+  gl_Position = (projectionMatrix * mv).xyww;
 }
 `;
 
@@ -199,7 +202,11 @@ export function createSkyDome(radius = 4200) {
   });
   const dome = new THREE.Mesh(new THREE.SphereGeometry(radius, 48, 24), mat);
   dome.frustumCulled = false;
-  dome.renderOrder = -10;
+  // Last of the opaque objects, not first. The sky shader is the dearest pixel
+  // in the scene (five octaves of cloud, more under the stars) and drawn first
+  // it ran for every pixel on screen, including the whole frame of a visitor
+  // standing in a windowless wing. Drawn last it runs only where sky shows.
+  dome.renderOrder = 10;
   dome.name = 'sky';
   return dome;
 }

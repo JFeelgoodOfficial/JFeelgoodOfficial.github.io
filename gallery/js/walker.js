@@ -24,7 +24,6 @@ export function addBox(x0, x1, z0, z1, opts = {}) {
   boxes.push(b);
   return b;
 }
-export function clearBoxes() { boxes.length = 0; }
 
 // walkable bounds: a list of rectangles; the player must stay inside their union
 const areas = [];
@@ -47,6 +46,8 @@ export function stepWalker(dt) {
   walker.pitch -= input.mouseY * C.LOOK_SENS;
   walker.pitch = Math.max(-C.MAX_PITCH, Math.min(C.MAX_PITCH, walker.pitch));
   input.mouseX = 0; input.mouseY = 0;
+  // the arrow keys turn, for anyone walking without a mouse
+  if (!walker.frozen) walker.heading += ((input.turnLeft ? 1 : 0) - (input.turnRight ? 1 : 0)) * C.TURN_RATE * dt;
 
   const canMove = !walker.frozen;
   _fwd.set(Math.sin(walker.heading), 0, Math.cos(walker.heading));

@@ -18,6 +18,8 @@ const RISE = 0.9;       // metres above eye level
 const GAP = 0.62;       // letter pitch across the view
 const SIZE = 0.7;       // letter plane height (m)
 const FONT = '300 176px "Cormorant Garamond", Georgia, serif';
+// prefers-reduced-motion: no drift, no sway
+const STILL = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function drawLetter(cv, ch) {
   const c = cv.getContext('2d');
@@ -103,6 +105,7 @@ export function createWelcome(scene, opts) {
       const o = inn * inn * (3 - 2 * inn) * out;
       l.mat.opacity = o;
       l.mesh.visible = o > 0.001;
+      if (STILL) continue; // the letters fade in and out where they hang
       l.mesh.position.y = 0.06 * Math.sin(1.3 * age + l.phase) + 0.25 * (1 - inn); // rises into place
       l.mesh.position.x = l.x0 + 0.02 * Math.sin(0.7 * age + l.phase * 1.7);
       l.mesh.rotation.z = 0.03 * Math.sin(0.9 * age + l.phase);

@@ -1,11 +1,11 @@
 // On-screen controls for phones and tablets. Everything here writes into the
-// same `input` singleton the keyboard fills, so walk.js, gallery.js and
-// vehicles.js need no idea touch exists:
+// same `input` singleton the keyboard fills, so walker.js needs no idea touch
+// exists:
 //
 //   left thumbstick  -> input.forward / reverse / left / right (+ boost when shoved)
 //   drag the canvas  -> input.mouseX / mouseY (same units the mouse accumulates)
-//   ▲ button (hold)  -> input.jump   (SPACE: jump, or climb/pitch in a vehicle)
-//   RUN button       -> input.boost  (SHIFT: sprint, or descend/boost in a vehicle)
+//   ▲ button (hold)  -> input.jump   (SPACE)
+//   RUN button       -> input.boost  (SHIFT: sprint)
 //   ACT button       -> the E handler (world.handleInteract)
 //
 // iOS has no Pointer Lock API, so nothing here depends on it — main.js gates
@@ -26,18 +26,9 @@ let stickId = null, lookId = null;
 let stickCx = 0, stickCy = 0, stickR = 56;
 let lookX = 0, lookY = 0;
 let runOn = false, stickRun = false;
-let mode = 'walk';
 
-function applyBoost() { input.boost = runOn || (mode === 'walk' && stickRun); }
-
-// main.js flips this when a vehicle is boarded. On foot, shoving the stick to
-// the rim sprints; in a vehicle input.boost means *descend* (drone) or boost
-// (ground), so full throttle must not trigger it — the RUN button owns it there.
-export function setTouchMode(m) {
-  if (m === mode) return;
-  mode = m;
-  applyBoost();
-}
+// shoving the stick to the rim sprints, the same as holding RUN
+function applyBoost() { input.boost = runOn || stickRun; }
 
 // Safari throws here if the pointer has already been released, and capture is
 // only an ergonomic nicety — a thumb that slides off the stick keeps steering.
@@ -80,12 +71,10 @@ function stickTo(x, y) {
   const len = Math.hypot(dx, dy) || 1;
   const nx = (dx / len) * mag;
   const ny = (dy / len) * mag;
-  // analog for the outdoor walker...
   input.analog = true;
   input.moveX = nx;
   input.moveY = -ny; // screen +y is toward the player, i.e. backwards
-  // ...and mirrored into the booleans so the gallery walker and every vehicle
-  // read the stick without knowing it exists.
+  // mirrored into the booleans too, for anything that only asks "is it held"
   input.forward = input.moveY > DIAG;
   input.reverse = input.moveY < -DIAG;
   input.left = input.moveX < -DIAG;

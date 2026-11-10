@@ -100,7 +100,13 @@ export function makeTextureManager(renderer, opts = {}) {
       if (panel._d > panel.keepDist) { tex.dispose(); return; }
       applyTexture(panel, tex);
     };
-    img.onerror = () => { panel._loading = false; done(); };
+    // a file that failed is not asked for again four times a second: wait 2 s,
+    // then 4, 8 … up to a minute
+    img.onerror = () => {
+      panel._loading = false; done();
+      panel._fails = (panel._fails || 0) + 1;
+      panel._retryAt = performance.now() + Math.min(60000, 1000 * 2 ** panel._fails);
+    };
     img.src = panel.url;
   }
 
@@ -122,16 +128,33 @@ export function makeTextureManager(renderer, opts = {}) {
     }
     // evict what has gone out of range, and collect what has come into it
     const wanted = [];
+    let claimed = 0; // panels that hold a texture or are fetching one
     for (let i = 0; i < panels.length; i++) {
       const pn = panels[i];
-      if (!pn._tex && !pn._loading && pn._d < pn.loadDist) wanted.push(pn);
-      else if (pn._tex && pn._d > pn.keepDist) evict(pn);
+      if (pn._tex && pn._d > pn.keepDist) evict(pn);
+      if (pn._tex || pn._loading) claimed++;
+      else if (pn._d < pn.loadDist && !(pn._retryAt > now)) wanted.push(pn);
     }
-    // nearest first, up to the in-flight budget: whatever the visitor is walking
-    // toward should not be queued behind the far end of the corridor
+    // Nearest first, up to the in-flight budget: whatever the visitor is walking
+    // toward should not be queued behind the far end of the corridor.
+    //
+    // A panel is only fetched if it would survive the cap below. More panels sit
+    // within loadDist of the middle of a wing than the cap allows, and loading
+    // all of them meant the farthest were decoded, uploaded, evicted and asked
+    // for again on every scan, for as long as the visitor stood there. So a
+    // newcomer has to be nearer than the farthest resident it would push out.
     if (wanted.length) {
       wanted.sort((a, b) => a._d - b._d);
-      for (let i = 0; i < wanted.length && inFlight < maxInFlight; i++) load(wanted[i]);
+      let far = null; // residents, farthest first, built only if the cap is reached
+      let fi = 0;
+      for (let i = 0; i < wanted.length && inFlight < maxInFlight; i++) {
+        if (claimed >= maxResident) {
+          if (!far) far = [...resident].sort((a, b) => b._d - a._d);
+          if (fi >= far.length || far[fi]._d <= wanted[i]._d) break;
+          fi++; // that resident is the one the cap will drop for this panel
+        } else claimed++;
+        load(wanted[i]);
+      }
     }
     // enforce the resident cap: drop the farthest over the limit
     if (resident.size > maxResident) {
