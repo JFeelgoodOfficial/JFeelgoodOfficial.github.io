@@ -1,14 +1,14 @@
 # JFeelgood
 
-> Original paintings, the Self Work series, books, limited-edition collectible art cards, and a set of worlds and games being built by JFeelgood — an Austin, Texas-based artist, painting since 2004, with hundreds of paintings, five published books, five music albums, and video games. The homepage is a walkable first-person 3D gallery in which every painting hangs.
+> Original paintings, the Self Work series, books, limited-edition collectible art cards, and a set of worlds and games being built by JFeelgood — an Austin, Texas-based artist, painting since 2004, with hundreds of paintings, five published books, five music albums, and video games. The homepage is a walkable first-person 3D gallery in which the featured paintings, the Self Work series and all 185 archive works hang.
 
 JFeelgood creates one-of-a-kind original artworks that explore identity, resilience, solitude, ego, and the human experience. Work spans acrylic, mixed media, gold leaf, epoxy resin, spray paint, and found materials on canvas and wood. Alongside the paintings, JFeelgood builds software: virtual galleries, browser games, and world-building projects.
 
 ## Site Pages
 
 - [Home — The Gallery](https://jfeelgood.com/): A title screen offering two ways in — the gallery, or the classic site. The gallery is a first-person 3D building on a stone headland above the sea (WebGL; desktop with keyboard and mouse, phones and tablets with on-screen touch controls). It runs west to east: a Sunrise Terrace where the five featured paintings hang facing the dawn over the water; the West Wing and East Wing, two long indoor rooms holding all 185 archive paintings on polished concrete floors; the Sunset Court between them, roofless and open to the southern sea, where the eight Self Work paintings hang under a canopy in low evening light beside a reflecting pool; and the Star Deck at the far end under deep space — the Milky Way, a nebula, and stars — with lit cases for the books, the art cards, and the other worlds being built. Pressing E (or the ACT button) on a painting opens it full frame, with its title and details.
-- [Classic Site](https://jfeelgood.com/classic.html): The same work as a traditional page, organised as one section per thing being made — featured paintings, the gallery, the archives, the Self Work series, books, collectible cards, iExploreArt, NOVA 7, the story of growth, and about the artist. Served automatically to browsers without WebGL2.
-- [Archives Wall](https://jfeelgood.com/archives.html): 185 paintings spanning 2004–2025 in a single scrolling wall, each opening to a larger view. The same 185 works hang along the two wings of the 3D gallery.
+- [Classic Site](https://jfeelgood.com/classic.html): The same work as a traditional page, organised as one section per thing being made — featured paintings, the gallery, the archives, the Self Work series, books, collectible cards, iExploreArt, NOVA 7, the story of growth, and about the artist. Browsers without WebGL2 or JavaScript are shown a link to it in place of the gallery.
+- [Archives Wall](https://jfeelgood.com/archives.html): 185 paintings spanning 2004–2025 in a single scrolling wall. Each opens on its own; 24 of them have a larger view than the wall shows. The same 185 works hang along the two wings of the 3D gallery.
 
 ## Projects (worlds, galleries, games)
 
@@ -34,6 +34,8 @@ Museum-quality 2.5" × 3.5" art card reproductions of selected paintings, sealed
 - Adonis: 16×20 in. Acrylic on canvas. A stylized face in soft muted tones against vibrant yellow. Single blue tear.
 - Veritas: 24×30 in. Mixed media on canvas. A transparent princess figure on stage against an abstract explosion of color.
 - Path of Privilege: 12×12 in, depth 4 in. Mixed media on wood — gold leaf, epoxy resin, affixed paintbrushes. Commentary on race, systemic inequality, and privilege.
+- A Simple Meditation: Painting as quiet practice. A piece built to be a breathing space: simple forms, mindful mark-making, and a soft place for attention to land. Also available as a limited-edition art card.
+- Dreamfall: Acrylic painting. The image at the top of the classic site and on share cards; also available as a limited-edition art card. It is not hung in the 3D gallery.
 - The Mother Essence: 36×36 in. Acrylic, latex, spray paint, acetone, found paper on hand-stretched canvas. Created 2011. From the private *Past & Future* series.
 
 The five featured works (Poetry of Solace, Adonis, Veritas, Path of Privilege, A Simple Meditation) hang on the Sunrise Terrace of the gallery.

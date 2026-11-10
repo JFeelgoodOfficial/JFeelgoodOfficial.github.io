@@ -2,16 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Archives Wall – JFeelgood</title>
+  <title>Archives Wall: 185 Paintings, 2004–2025 – JFeelgood</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f4e7d7">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23050509'/%3E%3Ccircle cx='16' cy='16' r='9' fill='%23f5b642'/%3E%3C/svg%3E">
-  <meta name="description" content="An immersive wall of JFeelgood paintings from the archives – a visual timeline of nearly two decades of work.">
+  <meta name="description" content="An immersive wall of JFeelgood paintings from the archives – 185 works spanning 2004–2025, a visual timeline of two decades.">
   <link rel="canonical" href="https://jfeelgood.com/archives.html" />
+  <!-- the wall is built from this list; fetch it alongside the page rather
+       than after the parser reaches the script at the bottom -->
+  <link rel="modulepreload" href="gallery/js/content.js">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://jfeelgood.com/archives.html">
   <meta property="og:site_name" content="JFeelgood Art">
-  <meta property="og:title" content="Archives Wall – JFeelgood">
+  <meta property="og:title" content="Archives Wall: 185 Paintings, 2004–2025 – JFeelgood">
   <meta property="og:description" content="A wall of 185 paintings spanning 2004–2025 – experiments, detours, and breakthroughs from two decades of work.">
   <meta property="og:image" content="https://jfeelgood.com/assets/images/opt/og-jfeelgood-1200x630.jpg">
   <meta property="og:image:width" content="1200">
@@ -290,14 +293,15 @@
     --bg: #f4e7d7;           /* page background */
     --bg-alt: #f8f0e5;       /* card background */
     --accent: #d9a15c;       /* warm gold */
-    --accent-soft: #eacaa0;  /* lighter gold */
+    --accent-soft: #eacaa0;  /* lighter gold: fills and edges only, 1.4:1 as text */
+    --accent-text: #855614;  /* the gold, dark enough to read: 4.8:1 or better on every background here */
     --text: #3b3024;         /* main text (dark brown) */
-    --text-muted: #8a7b69;   /* muted text */
+    --text-muted: #665846;   /* muted text, 4.7:1 on the darkest corner of the page */
     --border: #e0cfb8;
     --card: #f8f0e5;
     --highlight: #88b8d6;    /* soft blue accent */
-    --link: #88b8d6;
-    --link-hover: #5e9ac2;
+    --link: #225a7f;         /* the blue accent, deepened until it reads as text */
+    --link-hover: #17425f;
     --shadow-soft: 0 18px 40px rgba(0,0,0,0.18);
     --radius-lg: 18px;
     --radius-full: 999px;
@@ -334,6 +338,25 @@
     color: var(--link-hover);
   }
 
+  :focus-visible {
+    outline: 2px solid var(--link-hover);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  .skip-link {
+    position: absolute;
+    left: 12px;
+    top: -60px;
+    z-index: 10;
+    padding: 8px 14px;
+    background: #fff;
+    color: var(--text);
+    border-radius: 6px;
+    box-shadow: var(--shadow-soft);
+  }
+  .skip-link:focus { top: 12px; }
+
   header {
     display: flex;
     justify-content: space-between;
@@ -346,7 +369,7 @@
     letter-spacing: 0.18em;
     text-transform: uppercase;
     font-size: 0.88rem;
-    color: var(--accent-soft);
+    color: var(--accent-text);
   }
 
   nav {
@@ -416,7 +439,7 @@
     letter-spacing: 0.12em;
     text-transform: uppercase;
     font-size: 0.86rem;
-    color: var(--accent-soft);
+    color: var(--accent-text);
     margin-bottom: 8px;
   }
 
@@ -426,13 +449,6 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     margin-bottom: 6px;
-  }
-
-  .archive-sub {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    max-width: 42rem;
-    margin-bottom: 12px;
   }
 
   .archive-note {
@@ -474,13 +490,27 @@
     width: 100%;
     height: auto;         /* keep natural aspect ratio */
     display: block;
-    transform: translateZ(0);
     transition: transform 0.25s ease-out, filter 0.25s ease-out;
   }
 
   .archive-item:hover .archive-img {
     transform: scale(1.03);
     filter: brightness(1.03);
+  }
+
+  /* the tile clips its contents, so a ring on the link inside would be cut
+     off: draw it on the tile */
+  .archive-item a:focus-visible { outline: none; }
+  .archive-item:focus-within {
+    outline: 3px solid var(--link-hover);
+    outline-offset: 1px;
+    z-index: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    section::before { animation: none; display: none; }
+    .archive-img, nav a { transition: none; }
+    .archive-item:hover .archive-img, nav a:hover { transform: none; }
   }
 
   .archive-count {
@@ -561,6 +591,7 @@
 </style>
 </head>
 <body>
+  <a class="skip-link" href="#archive-grid">Skip to the paintings</a>
   <div class="page">
     <header>
       <div class="logo">JFEELGOOD</div>
@@ -571,6 +602,7 @@
       </nav>
     </header>
 
+    <main>
     <section>
       <div class="section-inner">
         <h1>Archives wall</h1>
@@ -597,7 +629,7 @@
           <a href="https://minicuration.com/shop.html?utm_source=jfeelgood&amp;utm_medium=referral&amp;utm_campaign=archives" target="_blank" rel="noopener">Browse the cards at minicuration ↗</a>
         </div>
 
-        <div class="archive-grid" id="archive-grid">
+        <div class="archive-grid" id="archive-grid" tabindex="-1">
           <!-- Built by the module at the end of this file, from the same
                ARCHIVES list the 3D gallery hangs. -->
         </div>
@@ -610,9 +642,10 @@
         <p class="archive-count" id="archive-count"></p>
       </div>
     </section>
+    </main>
 
     <footer>
-      <span>← Back to <a href="classic.html">the main gallery</a></span>
+      <span>← Back to <a href="classic.html">the classic site</a> · <a href="/">the walkable gallery</a></span>
       <span>Follow on Instagram: <a href="https://www.instagram.com/artistjfeelgood" target="_blank" rel="noopener">@artistjfeelgood</a></span>
     </footer>
   </div>
