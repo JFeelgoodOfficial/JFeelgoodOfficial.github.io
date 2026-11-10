@@ -48,7 +48,7 @@ Quality tiers: `high` (bloom, 2048 shadows, floor reflection at half res), `medi
 
 - `assets/images/opt/` — 1200px WebP derivatives used by the pages and the gallery's featured/Self Work panels, plus the social card `og-jfeelgood-1200x630.jpg`.
 - `assets/images/archives/thumbs/` — 700px WebP thumbnails used by the archives grid and the gallery wings.
-- `assets/images/archives/full/` — 1400px WebP "view the work" files, one for each of the 24 archive works whose original was meaningfully larger than its own thumbnail. Everything else clicks through to the thumbnail, which is already the largest version of it. Nothing on the site links to a multi-megabyte file.
+- `assets/images/archives/full/` — 1400px WebP "view the work" files, one for each of the 23 archive works whose original was meaningfully larger than its own thumbnail. Everything else clicks through to the thumbnail, which is already the largest version of it. Nothing on the site links to a multi-megabyte file.
 - `assets/fonts/` — the two variable font files (Cormorant Garamond, DM Sans), served from this origin rather than from Google.
 - `assets/images/cards/` — 640px WebP product shots for Collect.
 - `assets/images/projects/` — 1400px WebP images for the project sections on the classic site.

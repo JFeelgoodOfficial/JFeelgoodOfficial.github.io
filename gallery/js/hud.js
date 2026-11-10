@@ -9,6 +9,7 @@ const $ = (id) => document.getElementById(id);
 
 let relock = () => {};
 let onClose = () => {};
+let overlayOpen = false;
 
 // Every prompt goes through showPrompt() and every control legend through
 // showHint(), so this is the one place that has to know that the keyboard
@@ -42,7 +43,9 @@ export function initHud(opts = {}) {
   onClose = opts.onClose || (() => {});
   // close on Esc / backdrop click
   addEventListener('keydown', (e) => {
-    if (e.code === 'Escape' && isOverlayOpen()) { closeOverlays(); e.stopPropagation(); }
+    if (!overlayOpen) return;
+    if (e.code === 'Escape') { closeOverlays(); e.stopPropagation(); }
+    else if (e.code === 'Tab') trapTab(e);
   });
   for (const id of ['card', 'viewer']) {
     const el = $(id);
@@ -51,15 +54,23 @@ export function initHud(opts = {}) {
 }
 
 // --- prompt ---
+// world.js calls one of these every frame. The DOM is only touched when the
+// answer changes, which is also what lets #prompt be a live region: a screen
+// reader hears "E — Veritas" once, on arrival, not sixty times a second.
+let promptHtml = null;
 export function showPrompt(html) {
+  if (html === promptHtml) return;
   const el = $('prompt');
   if (!el) return;
+  promptHtml = html;
   el.innerHTML = touchify(html);
   el.hidden = false;
   // lights up the ACT button — on touch there's no key to try speculatively
   document.body.classList.add('has-prompt');
 }
 export function hidePrompt() {
+  if (promptHtml === null) return;
+  promptHtml = null;
   const el = $('prompt');
   if (el) el.hidden = true;
   document.body.classList.remove('has-prompt');
@@ -71,8 +82,8 @@ export function showHint(text) {
   el.textContent = touchify(text);
   el.hidden = false;
   el.style.opacity = '1'; // the previous hint's fade-out leaves this at 0
-  clearTimeout(el._t);
-  el._t = setTimeout(() => { el.style.opacity = '0'; setTimeout(() => (el.hidden = true), 1000); }, 6000);
+  clearTimeout(el._t); clearTimeout(el._t2);
+  el._t = setTimeout(() => { el.style.opacity = '0'; el._t2 = setTimeout(() => (el.hidden = true), 1000); }, 6000);
 }
 
 // --- info card ---
@@ -92,7 +103,7 @@ export function showCard(data) {
       ${data.img ? `<img src="${data.img}" alt="${escapeHtml(data.alt || data.title || '')}"${data.w && data.h ? ` width="${data.w}" height="${data.h}"` : ''} decoding="async">` : ''}
       <div class="card-text">
         ${data.kicker ? `<div class="card-kicker">${escapeHtml(data.kicker)}</div>` : ''}
-        <h2 class="card-title">${escapeHtml(data.title || '')}</h2>
+        <h2 class="card-title" id="card-title">${escapeHtml(data.title || '')}</h2>
         ${data.meta ? `<div class="card-meta">${escapeHtml(data.meta)}</div>` : ''}
         <div class="card-body">${body}</div>
         ${stock}
@@ -100,50 +111,7 @@ export function showCard(data) {
       </div>
     </div>`;
   el.querySelector('.card-close').addEventListener('click', closeOverlays);
-  openOverlay(el);
-  return el;
-}
-
-// --- interactive citizen dialogue tree ---
-// data: { kicker, title, greeting, choices:[{ label, say, end, then:[{label,say}] }] }
-// Renders the greeting + choice buttons; a choice shows its response and any
-// follow-up choices, with a "Back" to the greeting. "Say goodbye" (end) closes.
-export function showDialogue(data) {
-  const el = $('card');
-  if (!el) return;
-  const head = `
-    <button class="card-close" aria-label="Close">×</button>
-    <div class="card-text">
-      ${data.kicker ? `<div class="card-kicker">${escapeHtml(data.kicker)}</div>` : ''}
-      <h2 class="card-title">${escapeHtml(data.title || '')}</h2>`;
-
-  function render(text, options, showBack) {
-    const btns = options.map((o, i) =>
-      `<button class="dlg-choice" data-i="${i}">${escapeHtml(o.label)}</button>`
-    ).join('');
-    const back = showBack ? `<button class="dlg-choice ghost" data-back="1">← Back</button>` : '';
-    el.innerHTML = `
-      <div class="card-box dialogue">
-        ${head}
-        <div class="card-body dlg-say"><p>${escapeHtml(text)}</p></div>
-        <div class="dlg-choices">${btns}${back}</div>
-      </div></div>`;
-    el.querySelector('.card-close').addEventListener('click', closeOverlays);
-    el.querySelectorAll('.dlg-choice').forEach((b) => {
-      b.addEventListener('click', () => {
-        if (b.dataset.back) { greeting(); return; }
-        const o = options[+b.dataset.i];
-        if (!o) return;
-        // a choice may carry a side effect (the ski shop equips a board here)
-        if (o.action) { try { o.action(); } catch (e) { console.error(e); } }
-        if (o.end) { closeOverlays(); return; }
-        render(o.say || '', o.then || [], true);
-      });
-    });
-  }
-  function greeting() { render(data.greeting || '', data.choices || [], false); }
-
-  greeting();
+  el.setAttribute('aria-labelledby', 'card-title');
   openOverlay(el);
   return el;
 }
@@ -165,22 +133,43 @@ export function showViewer(data) {
       <div class="viewer-sub">${data.href ? `<a href="${data.href}" target="_blank" rel="noopener">open this work full frame ↗</a>` : ''}</div>
     </div>`;
   el.querySelector('.card-close').addEventListener('click', closeOverlays);
+  el.setAttribute('aria-label', data.title || 'Untitled work');
   openOverlay(el);
   return el;
 }
 
+// Both overlays are modal dialogs (role and aria-modal are in index.html):
+// focus goes to the close button on the way in, Tab stays inside, and whatever
+// had focus before gets it back on the way out.
+let returnFocus = null;
 function openOverlay(el) {
   el.hidden = false;
+  overlayOpen = true;
   if (document.pointerLockElement) document.exitPointerLock();
   // touch has no lock to drop — instead let go of the stick/buttons and get the
   // controls out from in front of the card
   document.documentElement.classList.add('overlay-open');
   resetTouch();
+  const a = document.activeElement;
+  returnFocus = a && a !== document.body && !el.contains(a) ? a : null;
+  const close = el.querySelector('.card-close');
+  if (close) close.focus({ preventScroll: true });
 }
 
-export function isOverlayOpen() {
-  return ['card', 'viewer'].some((id) => { const e = $(id); return e && !e.hidden; });
+const FOCUSABLE = 'a[href], button:not([disabled])';
+function trapTab(e) {
+  const el = ['card', 'viewer'].map($).find((o) => o && !o.hidden);
+  if (!el) return;
+  const items = [...el.querySelectorAll(FOCUSABLE)];
+  if (!items.length) return;
+  const first = items[0], last = items[items.length - 1];
+  const at = document.activeElement;
+  if (!el.contains(at)) { first.focus(); e.preventDefault(); }
+  else if (e.shiftKey && at === first) { last.focus(); e.preventDefault(); }
+  else if (!e.shiftKey && at === last) { first.focus(); e.preventDefault(); }
 }
+
+export function isOverlayOpen() { return overlayOpen; }
 
 export function closeOverlays() {
   let closed = false;
@@ -188,8 +177,13 @@ export function closeOverlays() {
     const e = $(id);
     if (e && !e.hidden) { e.hidden = true; e.innerHTML = ''; closed = true; }
   }
+  overlayOpen = false;
   document.documentElement.classList.remove('overlay-open');
-  if (closed) { onClose(); relock(); }
+  if (closed) {
+    if (returnFocus && returnFocus.isConnected) returnFocus.focus({ preventScroll: true });
+    returnFocus = null;
+    onClose(); relock();
+  }
 }
 
 // --- compass strip ---
@@ -197,8 +191,9 @@ export function closeOverlays() {
 // relative to the camera forward, within ±HALF degrees.
 const HALF = 75;
 const _marks = [];
+let _compassEl = null;
 export function updateCompass(entries, camPos, fwd, up, THREE) {
-  const el = $('compass');
+  const el = _compassEl || (_compassEl = $('compass'));
   if (!el || !_v1 || !_v2) return;
   // A phone strip is ~390px wide, so the desktop ±75° fan crams a dozen labels
   // into unreadable mush. Narrow the fan and enforce a minimum gap.
@@ -222,15 +217,21 @@ export function updateCompass(entries, camPos, fwd, up, THREE) {
   // what's straight ahead matters most, so it wins any collision
   _marks.sort((a, b) => Math.abs(a.ang) - Math.abs(b.ang));
   let html = '';
-  const placed = [];
+  _placed.length = 0;
   for (const m of _marks) {
-    if (placed.some((p) => Math.abs(p - m.x) < minGap)) continue;
-    placed.push(m.x);
+    let clash = false;
+    for (let i = 0; i < _placed.length; i++) if (Math.abs(_placed[i] - m.x) < minGap) { clash = true; break; }
+    if (clash) continue;
+    _placed.push(m.x);
     const dim = Math.abs(m.ang) > half * 0.6 ? ' dim' : '';
     html += `<span class="tick${dim}" style="left:${m.x.toFixed(1)}%">${m.name}</span>`;
   }
-  el.innerHTML = html;
+  // a visitor standing still, or looking at a card, produces the same strip
+  // every frame; only write it when a tick has actually moved
+  if (html !== _compassHtml) { _compassHtml = html; el.innerHTML = html; }
 }
+const _placed = [];
+let _compassHtml = '';
 
 // scratch (module-level; set lazily to avoid importing THREE just for types)
 let _v1, _v2;

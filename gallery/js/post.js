@@ -165,5 +165,8 @@ export function createPost(renderer, opts = {}) {
     brightMat.dispose(); blurMat.dispose(); compositeMat.dispose();
   }
 
-  return { render, setSize, setQuality, setEnabled, setStrength, dispose, get enabled() { return enabled; } };
+  return {
+    // where the scene is drawn: null (the canvas) when the pipeline is off
+    get sceneTarget() { return enabled ? sceneRT : null; },
+    render, setSize, setQuality, setEnabled, setStrength, dispose, get enabled() { return enabled; } };
 }

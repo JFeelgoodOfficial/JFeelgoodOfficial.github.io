@@ -12,7 +12,8 @@ import { createPost } from './post.js';
 import { input, initInput, lockPointer, isActive } from './input.js';
 import { initTouch } from './touch.js';
 import { walker, stepWalker, updateCamera, spawn } from './walker.js';
-import { buildWorld, updateWorld, renderReflection, setReflectionEnabled, resizeReflection, handleInteract, resolvePlace, degradeLighting, lightingReport, probeLighting, startWelcome, setProbeFail } from './world.js';
+import { buildWorld, updateWorld, renderReflection, setReflectionEnabled, resizeReflection, handleInteract, resolvePlace, shadowsDirty, degradeLighting, lightingReport, probeLighting, startWelcome, setProbeFail } from './world.js';
+import { showHint, isOverlayOpen } from './hud.js';
 
 if (document.documentElement.classList.contains('no-webgl')) {
   const el = document.getElementById('nogl');
@@ -39,7 +40,14 @@ const canvas = document.createElement('canvas');
 canvas.className = 'gallery-canvas';
 document.body.appendChild(canvas);
 
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+let quality = FORCE_Q || (TOUCH ? 'low' : 'high');
+
+// Only the low tier draws the scene straight to the canvas. The other two draw
+// it into post.js's own multisampled target and hand the canvas one full-screen
+// quad, so antialiasing the canvas as well would be a second set of samples
+// that nothing ever uses. (A visitor demoted to low mid-visit loses edge
+// smoothing; they were demoted because the frame rate needed it more.)
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: quality === 'low', powerPreference: 'high-performance' });
 renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio, C.MAX_PIXEL_RATIO));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -50,7 +58,8 @@ renderer.toneMappingExposure = C.EXPOSURE;
 renderer.setClearColor(0x000000, 1);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.shadowMap.autoUpdate = false; // rendered once per frame by hand (the reflection pass shares them)
+renderer.shadowMap.autoUpdate = false; // redrawn only when world.js says the light or the visitor moved (shadowsDirty)
+renderer.info.autoReset = false; // reset once per frame in step(), so the counters cover every pass
 
 // A lit program that fails to link takes every MeshStandardMaterial with it:
 // the building draws nothing and the gallery goes black around the paintings,
@@ -72,7 +81,6 @@ renderer.debug.onShaderError = (gl, program, vs, fs) => {
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(C.FOV, innerWidth / innerHeight, TOUCH ? 0.2 : 0.08, 6000);
 
-let quality = FORCE_Q || (TOUCH ? 'low' : 'high');
 const post = createPost(renderer, { strength: 0.55, threshold: 1.0, knee: 0.5, quality });
 let running = false;
 const clock = new THREE.Clock();
@@ -102,6 +110,7 @@ function applyQuality(q) {
   }
   post.setSize();
   resizeReflection();
+  shadowsDirty();
 }
 
 // --- load sequence -----------------------------------------------------------
@@ -116,29 +125,62 @@ function setProgress(f, label) {
   if (label && statusEl) statusEl.textContent = label;
 }
 
-let loadStarted = false;
+// Resolves once the world is ready to be entered and rejects if it could not be
+// built; boot.js owns the failure screen, so nothing is caught here.
+let loadPromise = null;
 export function startLoad() {
-  if (loadStarted) return;
-  loadStarted = true;
+  if (loadPromise) return loadPromise;
   if (loaderEl) { loaderEl.classList.remove('stage-choice'); loaderEl.classList.add('stage-loading'); }
   if (PROBE_FAIL) setProbeFail(true);
-  buildWorld({ scene, renderer, camera, quality, progress: setProgress, forceRung: FORCE_LIT, relock: () => lockPointer(canvas) })
-    .then(() => {
-      if (statusEl) statusEl.textContent = '';
+  loadPromise = buildWorld({ scene, renderer, camera, quality, progress: setProgress, forceRung: FORCE_LIT, relock: () => lockPointer(canvas) })
+    .then(async () => {
       // the world is built; now switch the renderer itself to the tier
       // (?q=low has to actually turn the reflection, bloom and shadows off)
       applyQuality(quality);
+      await warmShaders();
+      if (statusEl) statusEl.textContent = '';
       startRenderLoop();
       if (DEBUG) { enterWorld(); return; }
       if (TOUCH) enterWorld();
-      else if (enterBtn) enterBtn.hidden = false;
-    })
-    .catch((e) => { console.error('gallery build failed', e); if (statusEl) statusEl.textContent = 'something went wrong — the classic site has everything'; });
+      else if (enterBtn) {
+        enterBtn.hidden = false;
+        // the button that had focus was hidden when loading began; without
+        // this a keyboard visitor has to hunt for the way in
+        if (!document.activeElement || document.activeElement === document.body) enterBtn.focus({ preventScroll: true });
+      }
+    });
+  if (DEBUG) loadPromise.catch((e) => console.error('gallery build failed', e));
+  return loadPromise;
 }
 
+// The lighting self-test renders the west wing with shadows off, and three.js
+// does not look at a material's program again just because shadowMap.enabled
+// changed afterwards. So everything that test drew kept its shadowless program
+// for the rest of the visit: the west wing took no shadow from its own walls
+// and roof, and the low sun lit the inside of a windowless room. Compiling
+// here, with the tier applied and the real render target bound, gives every
+// material the program its first visible frame needs — off the main thread
+// where the driver allows it — and one whole frame behind the loader then
+// warms the reflection and bloom passes too.
+async function warmShaders() {
+  try {
+    updateCamera(camera);
+    renderer.setRenderTarget(post.sceneTarget);
+    await renderer.compileAsync(scene, camera);
+  } catch (e) { console.warn('gallery: shader warm-up skipped', e); }
+  renderer.setRenderTarget(null);
+  frame(true);
+}
+
+let entered = false;
 function enterWorld() {
+  if (entered) return;
+  entered = true;
+  input.enabled = true;
   if (DEBUG && DEBUG.startsWith('at:')) jumpTo(DEBUG.slice(3));
-  if (loaderEl) { loaderEl.classList.add('fading'); setTimeout(() => (loaderEl.style.display = 'none'), 900); }
+  // the fading button would otherwise keep the keyboard for its last second
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  if (loaderEl) { loaderEl.classList.add('fading'); setTimeout(() => { if (!failed) loaderEl.style.display = 'none'; }, 900); }
   if (hudEl) hudEl.hidden = false;
   // the floating WELCOME is placed from where the visitor actually stands, so
   // it can only be built once the jump above has happened
@@ -153,12 +195,15 @@ function jumpTo(name) {
 
 if (enterBtn) enterBtn.addEventListener('click', enterWorld);
 canvas.addEventListener('click', () => {
-  if (running && !input.locked && !document.querySelector('.card-overlay:not([hidden]),.viewer-overlay:not([hidden])')) lockPointer(canvas);
+  if (running && entered && !input.locked && !isOverlayOpen()) lockPointer(canvas);
 });
 
+const RESUME = 'Click to look around with the mouse · arrow keys turn';
 initInput(canvas,
   () => { try { handleInteract(); } catch (e) { console.error(e); } },
-  () => { if (hudEl) hudEl.classList.remove('locked'); }
+  // the pointer is free again (Esc, or a card opened): say how to pick it back up
+  () => { if (entered && !isOverlayOpen()) showHint(RESUME); },
+  () => { if (entered && !isOverlayOpen()) showHint(RESUME); }
 );
 if (TOUCH) initTouch(canvas, { onInteract: () => { try { handleInteract(); } catch (e) { console.error(e); } } });
 // ?debug and the headless checks import this module directly and expect the
@@ -173,21 +218,71 @@ function startRenderLoop() {
   renderer.setAnimationLoop(frame);
 }
 
-function frame() {
+// A frame nobody can see is not drawn. Behind the opaque loader the world
+// still updates, so paintings stream in while the visitor reads the controls,
+// but nothing is rendered; under an open card, or with the pointer released,
+// the picture is still and a few frames a second keep it honest.
+const IDLE_INTERVAL = 0.25;
+let idleT = 0, hudLocked = false, failed = false;
+
+function frame(force) {
+  try { step(force === true); }
+  catch (e) {
+    // setAnimationLoop only asks for the next frame after this one returns, so
+    // an exception here would otherwise leave a frozen picture and no message
+    console.error('gallery: frame failed', e);
+    stop('The gallery ran into a problem and had to stop.<br>Reload to try again — everything here also lives on the classic site.');
+  }
+}
+
+function step(force) {
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
-  if (dt > 0) fps = fps * 0.9 + (1 / dt) * 0.1;
-  if (!DEBUG && !FORCE_Q) monitorFps(dt);
-  if (DIAG && t - diagT > 0.5) { diagT = t; updateDiag(); }
+  const active = isActive();
 
-  if (isActive() || DEBUG) stepWalker(dt);
+  if (active || DEBUG) stepWalker(dt);
   updateCamera(camera);
-  if (isActive() && hudEl) hudEl.classList.add('locked');
+  if (active !== hudLocked && hudEl) { hudLocked = active; hudEl.classList.toggle('locked', active); }
   try { updateWorld(dt, t, camera); } catch (e) { console.error(e); }
 
-  if (renderer.shadowMap.enabled) renderer.shadowMap.needsUpdate = true;
+  if (!force && !DEBUG) {
+    if (!entered) return;
+    if (!active || isOverlayOpen()) {
+      idleT += dt;
+      if (idleT < IDLE_INTERVAL) return;
+    }
+  }
+  // time since the last frame that was actually drawn
+  const drawn = Math.max(dt, idleT);
+  idleT = 0;
+
+  if (drawn > 0) fps = fps * 0.9 + (1 / drawn) * 0.1;
+  if (!DEBUG && !FORCE_Q && active && !force) monitorFps(dt);
+  if (DIAG && t - diagT > 0.5) { diagT = t; updateDiag(); }
+
+  // the draw counters would otherwise only ever describe the last pass (the
+  // bloom composite: one quad), which is what ?diag used to report
+  renderer.info.reset();
   try { renderReflection(camera); } catch (e) { console.error(e); }
   post.render(scene, camera);
+}
+
+// Take the gallery down and say why, on the card the no-WebGL path already has.
+function stop(html) {
+  failed = true;
+  renderer.setAnimationLoop(null);
+  running = false;
+  input.enabled = false;
+  // a locked pointer cannot click the link on the card
+  if (document.pointerLockElement) document.exitPointerLock();
+  const el = document.getElementById('nogl');
+  if (el) {
+    const p = el.querySelector('p');
+    if (p) p.innerHTML = html;
+    el.hidden = false;
+    const a = el.querySelector('a');
+    if (a) a.focus({ preventScroll: true });
+  }
 }
 
 // --- on-screen diagnostics (?diag) -------------------------------------------
@@ -227,24 +322,19 @@ function onResize() {
   post.setSize();
   resizeReflection();
 }
+// every resize reallocates the bloom and reflection targets, and a window
+// being dragged fires one per frame
 let resizeT = 0;
 addEventListener('resize', () => {
-  if (!TOUCH) { onResize(); return; }
   clearTimeout(resizeT);
-  resizeT = setTimeout(onResize, 150);
+  resizeT = setTimeout(onResize, TOUCH ? 150 : 80);
 });
 addEventListener('orientationchange', () => setTimeout(onResize, 250));
 
 canvas.addEventListener('webglcontextlost', (e) => {
-  e.preventDefault();
-  renderer.setAnimationLoop(null);
-  running = false;
-  const el = document.getElementById('nogl');
-  if (el) {
-    const p = el.querySelector('p');
-    if (p) p.innerHTML = 'This device ran out of memory for the gallery.<br>Reload to try again — everything here also lives on the classic site.';
-    el.hidden = false;
-  }
+  // no preventDefault: that would promise the browser a restore handler, and
+  // rebuilding the world in place is a reload by another name
+  stop('This device ran out of memory for the gallery.<br>Reload to try again — everything here also lives on the classic site.');
 });
 
 document.addEventListener('visibilitychange', () => {
@@ -252,7 +342,8 @@ document.addEventListener('visibilitychange', () => {
   else if (running) { clock.getDelta(); renderer.setAnimationLoop(frame); }
 });
 
-// One-shot automatic downgrade if the first seconds run slow.
+// Automatic downgrade: a tier that averages under 30 fps over three seconds of
+// actual walking drops to the next one. It never climbs back.
 let fps = 60;
 let fpsFrames = 0, fpsAccum = 0;
 function monitorFps(dt) {
@@ -265,8 +356,8 @@ function monitorFps(dt) {
   }
 }
 
-// headless tests + debug
-window.__debug = {
+// headless tests + debug (?debug, ?diag) — not left on window for every visitor
+if (DEBUG || DIAG) window.__debug = {
   walker, camera, scene, renderer, input,
   get ready() { return running; },
   quality: () => quality,
@@ -279,7 +370,7 @@ window.__debug = {
     for (let i = 0; i < Math.round(seconds * 60); i++) { stepWalker(dt); updateCamera(camera); updateWorld(dt, i * dt, camera); }
   },
   interact: () => handleInteract(),
-  frame: () => frame(),
+  frame: () => frame(true),
   lighting: () => lightingReport(),
   probe: () => probeLighting(),
   welcome: () => startWelcome(),

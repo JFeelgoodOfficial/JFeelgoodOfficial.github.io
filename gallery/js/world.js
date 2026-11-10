@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { C, PLAN, PLACES, skyStateAt, SPAWN } from './config.js';
-import { createSkyDome, setSkyState, bakeEnvironments, skyUniforms, currentSky } from './sky.js';
+import { createSkyDome, setSkyState, bakeEnvironments, skyUniforms } from './sky.js';
 import { createSea, createPool } from './water.js';
 import { createMaterials } from './materials.js';
 import { buildBuilding } from './building.js';
@@ -43,7 +43,7 @@ let welcome = null;
 let ladderNotice = '';  // shown once the visitor is actually inside, not mid-load
 const probeHide = [];   // sky, water and the unlit paintings: hidden while probing
 const compassEntries = [];
-const _fwd = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0), _p = new THREE.Vector3();
+const _fwd = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
 let lastEnv = '';
 let hintShown = false;
 
@@ -247,9 +247,9 @@ function setupCompass() {
 export function resolvePlace(name) { return PLACES[name] || null; }
 
 // 0 outside every wing, ramping to 1 over `margin` metres once past a
-// doorway. The wings are windowless, so nothing here should still be reading
-// the sky's ambient once the visitor is a few strides past the threshold —
-// the room's own fixtures need to be doing the actual lighting by then.
+// doorway. The wings are windowless, so a few strides past the threshold the
+// sky's fills have eased down to their indoor floors (LIT) and the room is lit
+// by those floors plus its own fixtures.
 function wingIndoor(x, x0, x1, margin) {
   if (x <= x0 || x >= x1) return 0;
   return Math.min(1, Math.min(x - x0, x1 - x) / margin);
@@ -265,7 +265,16 @@ function indoorFactor(x) {
 // state, the sun, the fills, the environment map and the light pool. The
 // self-test calls it too, for the position it is about to render from, so what
 // it measures is what a visitor standing there would see.
-const _sunPos = new THREE.Vector3();
+//
+// Nothing that casts a shadow moves, so the shadow map only goes stale when the
+// light does: the sun's direction changes with the sky, and its frustum rides
+// along with the visitor. That frustum is 140 m across and is moved a whole
+// metre at a time, so a visitor walking the length of a wing redraws the map
+// eighty-odd times instead of once a frame, and standing still costs nothing.
+const SHADOW_STEP = 1;
+const _sunPos = new THREE.Vector3(), _anchor = new THREE.Vector3();
+const _lastAnchor = new THREE.Vector3(1e9, 0, 0), _lastSunDir = new THREE.Vector3();
+export function shadowsDirty() { _lastAnchor.set(1e9, 0, 0); }
 function applyLightingAt(pos, dt) {
   const cur = setSkyState(skyStateAt(pos.x));
   const indoors = indoorFactor(pos.x);
@@ -273,10 +282,16 @@ function applyLightingAt(pos, dt) {
   // sun + hemisphere follow the blended preset; the shadow frustum rides on the visitor
   sun.color.copy(cur.sunColor);
   sun.intensity = cur.sunIntensity;
-  _sunPos.copy(pos).addScaledVector(cur.sunDir, 220);
+  _anchor.set(Math.round(pos.x / SHADOW_STEP) * SHADOW_STEP, C.EYE, Math.round(pos.z / SHADOW_STEP) * SHADOW_STEP);
+  _sunPos.copy(_anchor).addScaledVector(cur.sunDir, 220);
   sun.position.copy(_sunPos);
-  sun.target.position.copy(pos);
+  sun.target.position.copy(_anchor);
   sun.target.updateMatrixWorld();
+  if (!_anchor.equals(_lastAnchor) || _lastSunDir.distanceToSquared(cur.sunDir) > 1e-8) {
+    _lastAnchor.copy(_anchor);
+    _lastSunDir.copy(cur.sunDir);
+    renderer.shadowMap.needsUpdate = true;
+  }
   hemi.color.copy(cur.hemiSky);
   hemi.groundColor.copy(cur.hemiGround);
   // the hemisphere light isn't shadow-mapped — walls don't block it — so it
@@ -319,10 +334,9 @@ export function updateWorld(dt, t, camera) {
   art.update(walker.pos, performance.now());
   lookDir(_fwd);
   const focus = updateInteract(walker.pos, _fwd, 9);
-  if (!isOverlayOpen()) {
-    if (focus) showPrompt(focus.prompt); else hidePrompt();
-  } else hidePrompt();
-  walker.frozen = isOverlayOpen();
+  const overlay = isOverlayOpen();
+  if (focus && !overlay) showPrompt(focus.prompt); else hidePrompt();
+  walker.frozen = overlay;
 
   updateCompass(compassEntries, walker.pos, _fwd, _up, THREE);
 }
@@ -385,6 +399,7 @@ export function probeLighting() {
   for (const o of probeHide) o.visible = false;
   const prevTarget = renderer.getRenderTarget();
   const prevShadow = renderer.shadowMap.enabled;
+  const prevDirty = renderer.shadowMap.needsUpdate;
   renderer.shadowMap.enabled = false;
   renderer.setRenderTarget(probeRT);
   renderer.clear();
@@ -393,6 +408,8 @@ export function probeLighting() {
   renderer.readRenderTargetPixels(probeRT, 0, 0, 64, 36, px);
   renderer.setRenderTarget(prevTarget);
   renderer.shadowMap.enabled = prevShadow;
+  renderer.shadowMap.needsUpdate = prevDirty;
+  shadowsDirty(); // the frustum was parked in the west wing for the reading
   for (let i = 0; i < probeHide.length; i++) probeHide[i].visible = wasHidden[i];
 
   let sum = 0;
@@ -506,5 +523,3 @@ export function handleInteract() {
   if (f && f.action) { f.action(); return true; }
   return false;
 }
-
-export function currentSkyState() { return currentSky(); }

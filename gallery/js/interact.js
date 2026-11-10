@@ -13,19 +13,13 @@ const _p = new THREE.Vector3();
 // Raycast targets: { mesh, action, prompt }. Checked against a ray from the
 // camera center; the nearest hit within maxDist wins over proximity items.
 const rayTargets = [];
-let rayMeshes = [];   // cache: rebuilt only when the target list changes
+const rayMeshes = []; // the same list as bare meshes, which is what the raycaster takes
 const raycaster = new THREE.Raycaster();
 const _origin = new THREE.Vector3();
 const _dir = new THREE.Vector3();
 
-export function clearInteractables() { items.length = 0; rayTargets.length = 0; rayMeshes = []; focus = null; }
-
 export function addInteractable(it) { items.push(it); return it; }
 export function addRayTarget(t) { rayTargets.push(t); rayMeshes.push(t.mesh); return t; }
-export function removeRayTargetsByTag(tag) {
-  for (let i = rayTargets.length - 1; i >= 0; i--) if (rayTargets[i].tag === tag) rayTargets.splice(i, 1);
-  rayMeshes = rayTargets.map((t) => t.mesh);
-}
 
 // Called each frame with the camera world position + look direction.
 // Returns the focused interactable (or null) so the HUD can show its prompt.
@@ -54,10 +48,6 @@ export function updateInteract(camPos, lookDir, rayMaxDist = 7) {
   }
 
   return focus;
-}
-
-export function fireInteract() {
-  if (focus && focus.action) focus.action();
 }
 
 export function currentFocus() { return focus; }

@@ -242,15 +242,3 @@ export function createMaterials(quality = 'high') {
   mats.stoneWall = mats.stone.clone();
   return mats;
 }
-
-// Set a material's texture repeat for a mesh of world size (w, d) so `tile`
-// metres map onto one texture repeat. Materials are shared, so a mesh that
-// needs a different repeat gets a cloned material with cloned maps.
-export function tiled(mat, w, d, tile) {
-  const m = mat.clone();
-  for (const k of ['map', 'roughnessMap', 'normalMap']) {
-    if (m[k]) { m[k] = m[k].clone(); m[k].repeat.set(w / tile, d / tile); m[k].needsUpdate = true; }
-  }
-  m.userData = { ...mat.userData };
-  return m;
-}

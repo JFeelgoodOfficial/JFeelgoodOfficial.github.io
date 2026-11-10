@@ -18,6 +18,7 @@ export const C = {
   JUMP: 5.5,
   PLAYER_RADIUS: 0.45,
   LOOK_SENS: 0.0022,
+  TURN_RATE: 1.9, // rad/s while an arrow key is held
   MAX_PITCH: 1.45,
 
   // --- render ---

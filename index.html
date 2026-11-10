@@ -37,7 +37,9 @@
         "sameAs": [
           "https://www.instagram.com/artistjfeelgood",
           "https://minicuration.com/artists/jfeelgood.html",
-          "https://thebookofshadowwork.com"
+          "https://thebookofshadowwork.com",
+          "https://iexploreart.com",
+          "https://nova7game.org"
         ]
       },
       {
@@ -130,6 +132,12 @@
       var c = document.createElement('canvas');
       var gl = c.getContext('webgl2');
       if (!gl) document.documentElement.classList.add('no-webgl');
+      else {
+        // the answer is all that was wanted: hand the context straight back
+        // rather than hold one open behind a title screen
+        var lose = gl.getExtension('WEBGL_lose_context');
+        if (lose) lose.loseContext();
+      }
     } catch (e) {
       document.documentElement.classList.add('no-webgl');
     }
@@ -193,13 +201,19 @@
 
       <!-- stage: loading -->
       <div class="loader-bar"><div id="loader-fill" class="loader-fill"></div></div>
-      <div id="loader-status" class="loader-status">opening the doors…</div>
-      <button id="enter-btn" class="enter-btn" hidden>STEP INSIDE</button>
+      <div id="loader-status" class="loader-status" role="status" aria-live="polite">opening the doors…</div>
+      <button id="enter-btn" class="enter-btn" type="button" hidden>STEP INSIDE</button>
+      <!-- shown by boot.js when the gallery cannot be loaded or built -->
+      <div id="loader-fail" class="loader-fail" hidden>
+        <p>Everything that hangs here is also on the classic site.</p>
+        <a class="title-btn" href="classic.html">CLASSIC SITE</a>
+        <button id="loader-retry" class="title-btn ghost" type="button">TRY AGAIN</button>
+      </div>
       <div class="loader-controls" id="loader-controls">
         <span><b>W A S D</b> walk</span>
         <span><b>SHIFT</b> run</span>
         <span><b>SPACE</b> jump</span>
-        <span><b>MOUSE</b> look</span>
+        <span><b>MOUSE</b> or <b>← →</b> look</span>
         <span><b>E</b> view a work</span>
         <span><b>ESC</b> release mouse</span>
       </div>
@@ -216,7 +230,7 @@
   <!-- In-world HUD (DOM) -->
   <div id="hud" hidden>
     <div id="compass" class="compass"></div>
-    <div id="prompt" class="prompt" hidden></div>
+    <div id="prompt" class="prompt" role="status" aria-live="polite" hidden></div>
     <div id="hint" class="hint" hidden></div>
     <div class="footer-links">
       <a href="classic.html">classic site</a>
@@ -226,8 +240,8 @@
   </div>
 
   <!-- Info card + archive viewer overlays (filled by hud.js) -->
-  <div id="card" class="card-overlay" hidden></div>
-  <div id="viewer" class="viewer-overlay" hidden></div>
+  <div id="card" class="card-overlay" role="dialog" aria-modal="true" hidden></div>
+  <div id="viewer" class="viewer-overlay" role="dialog" aria-modal="true" hidden></div>
 
   <script type="module" src="gallery/js/boot.js"></script>
 </body>
